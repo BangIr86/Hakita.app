@@ -57,7 +57,12 @@ export default function InvestigasiPage() {
                 if (text) {
                   setPesan((prev) => {
                     const pesanBaru = [...prev];
-                    pesanBaru[pesanBaru.length - 1].content += text;
+                    const lastIndex = pesanBaru.length - 1;
+                    // Mencegah duplikasi teks akibat mutasi objek di React Strict Mode
+                    pesanBaru[lastIndex] = {
+                      ...pesanBaru[lastIndex],
+                      content: pesanBaru[lastIndex].content + text
+                    };
                     return pesanBaru;
                   });
                 }

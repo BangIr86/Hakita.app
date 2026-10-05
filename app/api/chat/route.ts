@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Menggunakan SDK Resmi Google
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: NextRequest) {
@@ -23,8 +22,10 @@ ATURAN UTAMA:
 - Jika siswa bertanya di luar topik HAKI atau teknologi digital, tolak dengan sopan dan katakan bahwa kamu hanya memiliki informasi terkait kasus pelanggaran digital saat ini.
 - Berikan pujian saat siswa berhasil mengidentifikasi pelanggaran HAKI.`;
 
+    // Karena tier "pro" ternyata memiliki limit 0 (hanya untuk akun berbayar), 
+    // dan flash standar sedang 503, kita beralih ke jalur "flash-lite" (model super ringan & gratis).
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-flash-lite-latest",
       systemInstruction: systemInstruction,
     });
 
@@ -36,7 +37,6 @@ ATURAN UTAMA:
     const latestMessage = pesan[pesan.length - 1].content;
     const chat = model.startChat({ history });
 
-    // Mulai streaming respons via SDK
     const result = await chat.sendMessageStream(latestMessage);
 
     const stream = new ReadableStream({
@@ -44,12 +44,9 @@ ATURAN UTAMA:
         try {
           for await (const chunk of result.stream) {
             const chunkText = chunk.text();
-            
-            // Format SSE yang kompatibel dengan UI kita
             const payload = {
               candidates: [{ content: { parts: [{ text: chunkText }] } }]
             };
-            
             const dataStr = `data: ${JSON.stringify(payload)}\n\n`;
             controller.enqueue(new TextEncoder().encode(dataStr));
           }
@@ -74,7 +71,7 @@ ATURAN UTAMA:
     console.error("Gagal terhubung ke Gemini:", error);
     return new Response(
       JSON.stringify({ 
-        error: "Gagal memproses respons. Pastikan API Key valid dan koneksi internet stabil.", 
+        error: "Gagal memproses respons. Pastikan API Key dan nama model valid.", 
         detail: error.message 
       }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
