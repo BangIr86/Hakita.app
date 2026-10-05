@@ -4,6 +4,9 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6">
       <div className="max-w-4xl text-center space-y-8">
+        <div className="flex justify-center mb-6">
+          <img src="/logo.png" alt="Logo Detektif HAKI" className="w-32 h-auto object-contain drop-shadow-2xl" />
+        </div>
         <div className="inline-block px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-semibold tracking-widest text-sm mb-4">
           MISI PEMBELAJARAN INTERAKTIF
         </div>

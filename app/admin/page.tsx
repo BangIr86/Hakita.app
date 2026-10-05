@@ -35,8 +35,8 @@ export default function AdminPage() {
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="bg-white max-w-md w-full p-8 rounded-3xl shadow-xl border border-slate-200">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-slate-900 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-            <span className="text-2xl">👨‍🏫</span>
+          <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-extrabold text-slate-800">Dasbor Guru</h1>
           <p className="text-slate-500 mt-2">Masuk ke panel kontrol aktivitas kelas.</p>

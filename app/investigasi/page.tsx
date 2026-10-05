@@ -49,6 +49,9 @@ export default function InvestigasiPage() {
         </button>
 
         <div className="text-center mb-10 mt-12 md:mt-0">
+          <div className="flex justify-center mb-4">
+            <img src="/logo.png" alt="Logo" className="w-20 h-20 object-contain drop-shadow-lg" />
+          </div>
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
             Identifikasi Tim Detektif
           </h1>
@@ -146,14 +149,15 @@ export default function InvestigasiPage() {
     try {
       // 1. Simpan pesan user ke Supabase (jika sudah dikonfigurasi)
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
-        await supabase.from("chat_history").insert({
+        const { error: insertError } = await supabase.from("chat_history").insert({
           kelompok: kelompokAktif,
           kelas: kelas,
           nama_anggota: namaAnggota,
           kasus_id: kasusAktif.id,
           role: "user",
           content: textUser
-        }).catch(err => console.log("Supabase belum disetup atau error:", err));
+        });
+        if (insertError) console.log("Supabase belum disetup atau error:", insertError);
       }
 
       const response = await fetch("/api/chat", {
@@ -218,14 +222,15 @@ export default function InvestigasiPage() {
 
       // 2. Simpan pesan AI ke Supabase setelah selesai stream
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
-        await supabase.from("chat_history").insert({
+        const { error: aiInsertError } = await supabase.from("chat_history").insert({
           kelompok: kelompokAktif,
           kelas: kelas,
           nama_anggota: namaAnggota,
           kasus_id: kasusAktif.id,
           role: "assistant",
           content: fullAssistantText
-        }).catch(err => console.log("Supabase belum disetup atau error:", err));
+        });
+        if (aiInsertError) console.log("Supabase belum disetup atau error:", aiInsertError);
       }
 
     } catch (error) {
@@ -273,8 +278,8 @@ export default function InvestigasiPage() {
       {/* Chat Area (Saksi Mata AI) */}
       <div className="flex-1 bg-white rounded-3xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex items-center gap-4 bg-white">
-          <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
-            🤖
+          <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
+            <img src="/logo.png" alt="AI" className="w-full h-full object-contain" />
           </div>
           <div>
             <h2 className="font-bold text-lg text-slate-800">Saksi Mata AI</h2>

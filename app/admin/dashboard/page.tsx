@@ -69,7 +69,7 @@ export default function AdminDashboard() {
       <div className="w-full md:w-1/4 bg-white border-r border-slate-200 flex flex-col">
         <div className="p-6 border-b border-slate-200 bg-slate-900 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">👨‍🏫</span>
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
             <h1 className="text-xl font-bold">Dasbor Guru</h1>
           </div>
           <p className="text-slate-400 text-sm">Pantau investigasi siswa.</p>
