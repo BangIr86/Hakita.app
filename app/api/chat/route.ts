@@ -1,49 +1,68 @@
 import { NextRequest } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// Menggunakan SDK Resmi Google
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: NextRequest) {
   try {
-    const { pesan, kasus } = await req.json();
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "API Key tidak ditemukan" }), { status: 500 });
+    if (!process.env.GEMINI_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "API Key hilang dari .env.local" }), 
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Format array pesan untuk Gemini API 
-    const contents = pesan.map((msg: any) => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
-    }));
+    const { pesan, kasus } = await req.json();
 
-    // Konfigurasi request menggunakan pendekatan System Instructions (Gemini 1.5)
-    const requestBody = {
-      systemInstruction: {
-        parts: [{ 
-          text: `Kamu adalah Saksi Mata AI untuk kasus HAKI berjudul "${kasus}". Berperanlah sebagai saksi yang agak misterius tapi informatif. Audiensmu adalah siswa kelas 9 SMP. Jawab dengan kalimat pendek, interaktif, dan jangan berikan jawaban akhir, biarkan siswa menebak sendiri.` 
-        }]
-      },
-      contents: contents,
-      generationConfig: {
-        maxOutputTokens: 600,
-      }
-    };
+    const systemInstruction = `Kamu adalah 'Saksi Mata Digital', seorang asisten investigasi misterius namun suportif di dalam game edukasi DETEKTIF HAKI. Tugasmu adalah membimbing siswa kelas 9 SMP memecahkan kasus pelanggaran Hak Kekayaan Intelektual (HAKI) seperti plagiarisme desain, pembajakan perangkat lunak, dan etika AI. Konteks kasus saat ini: ${kasus || 'Umum'}.
 
-    // Panggilan REST API murni menuju Gemini dengan parameter alt=sse (Streaming)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
-    
-    const response = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody)
+ATURAN UTAMA:
+- Jangan pernah memberikan jawaban langsung atau definisi mentah. Berikan petunjuk (*clue*) berupa pertanyaan pancingan yang membuat siswa berpikir.
+- Gunakan bahasa yang santai, ala detektif, mudah dipahami anak usia 14-15 tahun, dan gunakan panggilan 'Detektif' untuk menyapa siswa.
+- Jika siswa bertanya di luar topik HAKI atau teknologi digital, tolak dengan sopan dan katakan bahwa kamu hanya memiliki informasi terkait kasus pelanggaran digital saat ini.
+- Berikan pujian saat siswa berhasil mengidentifikasi pelanggaran HAKI.`;
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: systemInstruction,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return new Response(`Gemini API Error: ${errorText}`, { status: response.status });
-    }
+    const history = pesan.slice(0, -1).map((msg: any) => ({
+      role: msg.role === "user" ? "user" : "model",
+      parts: [{ text: msg.content }],
+    }));
 
-    // Proxikan stream SSE murni langsung dari Gemini menuju Client
-    return new Response(response.body, {
+    const latestMessage = pesan[pesan.length - 1].content;
+    const chat = model.startChat({ history });
+
+    // Mulai streaming respons via SDK
+    const result = await chat.sendMessageStream(latestMessage);
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            
+            // Format SSE yang kompatibel dengan UI kita
+            const payload = {
+              candidates: [{ content: { parts: [{ text: chunkText }] } }]
+            };
+            
+            const dataStr = `data: ${JSON.stringify(payload)}\n\n`;
+            controller.enqueue(new TextEncoder().encode(dataStr));
+          }
+          controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+          controller.close();
+        } catch (streamError) {
+          console.error("Stream Gemini terputus:", streamError);
+          controller.error(streamError);
+        }
+      }
+    });
+
+    return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -51,8 +70,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-  } catch (error) {
-    console.error("Chatbot Error:", error);
-    return new Response("Internal Server Error", { status: 500 });
+  } catch (error: any) {
+    console.error("Gagal terhubung ke Gemini:", error);
+    return new Response(
+      JSON.stringify({ 
+        error: "Gagal memproses respons. Pastikan API Key valid dan koneksi internet stabil.", 
+        detail: error.message 
+      }), 
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
