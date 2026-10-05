@@ -242,9 +242,9 @@ export default function InvestigasiPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row p-4 gap-6">
+    <div className="h-[100dvh] bg-slate-50 flex flex-col md:flex-row p-2 md:p-4 gap-4 md:gap-6 overflow-hidden">
       {/* Sidebar Informasi Kasus Khusus Kelompok */}
-      <div className="w-full md:w-1/3 lg:w-1/4 bg-slate-900 p-6 rounded-3xl shadow-lg border border-slate-800 text-white flex flex-col relative overflow-hidden">
+      <div className="w-full md:w-1/3 lg:w-1/4 bg-slate-900 p-4 md:p-6 rounded-3xl shadow-lg border border-slate-800 text-white flex flex-col relative overflow-y-auto shrink-0 max-h-[25vh] md:max-h-none">
         {/* Dekorasi Background */}
         <div className="absolute top-0 right-0 p-8 opacity-5 text-9xl">📁</div>
 
@@ -289,7 +289,7 @@ export default function InvestigasiPage() {
           </div>
         </div>
         
-        <div className="flex-1 p-6 overflow-y-auto space-y-6 h-[500px] bg-slate-50/50">
+        <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-6 bg-slate-50/50">
           {pesan.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-6 max-w-md mx-auto text-center px-4">
               <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-5xl shadow-inner shadow-blue-200/50">
@@ -332,7 +332,7 @@ export default function InvestigasiPage() {
           )}
         </div>
 
-        <form onSubmit={kirimPesan} className="p-4 border-t border-slate-200 bg-white flex gap-3">
+        <form onSubmit={kirimPesan} className="sticky bottom-0 p-4 border-t border-slate-200 bg-white flex gap-3 z-20 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
           <input
             type="text"
             value={inputUser}
