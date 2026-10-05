@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 // Menambahkan Kasus ke-3 agar genap untuk 6 kelompok
@@ -35,6 +35,12 @@ export default function InvestigasiPage() {
   const [pesan, setPesan] = useState<{ role: string; content: string }[]>([]);
   const [inputUser, setInputUser] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll ke pesan terbaru
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [pesan, isLoading]);
 
   // Jika kelompok belum dipilih, tampilkan layar pemilihan kelompok
   if (!kelompokAktif) {
@@ -330,6 +336,7 @@ export default function InvestigasiPage() {
                </div>
              </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         <form onSubmit={kirimPesan} className="sticky bottom-0 p-4 border-t border-slate-200 bg-white flex gap-3 z-20 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
