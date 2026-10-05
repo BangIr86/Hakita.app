@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminPage() {
+  const router = useRouter();
   const [courseCode, setCourseCode] = useState("");
   const [error, setError] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -22,7 +24,11 @@ export default function AdminPage() {
     // Lolos validasi
     setError("");
     setIsSuccess(true);
-    // TODO: Anda dapat menambahkan logika redirect Next.js useRouter atau fetch auth Supabase di sini
+    
+    // Redirect ke dashboard admin
+    setTimeout(() => {
+      router.push("/admin/dashboard");
+    }, 1000);
   };
 
   return (
