@@ -105,6 +105,18 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  // Generator Kode Kelas Acak / Random
+  const generateRandomKodeKelas = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let randomStr = "";
+    for (let i = 0; i < 4; i++) {
+      randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const cleanNama = inputNamaKelasBaru.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const prefix = cleanNama ? `HAKI-${cleanNama}` : "HAKI";
+    setInputKodeKelasBaru(`${prefix}-${randomStr}`);
+  };
+
   // Handler Generate Kode Kelas Baru
   const handleSimpanKelasBaru = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -605,18 +617,39 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Kode Akses Kelas (Otomatis / Kustom)
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={inputKodeKelasBaru}
-                  onChange={(e) => setInputKodeKelasBaru(e.target.value.toUpperCase())}
-                  placeholder="Contoh: HAKI-9D"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 font-mono uppercase tracking-wider focus:outline-none focus:border-blue-500"
-                />
-                <span className="text-[10px] text-slate-400">Kode ini yang dibagikan ke siswa kelas tersebut.</span>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Kode Akses Kelas
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generateRandomKodeKelas}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <span>🎲</span> Acak / Random
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={inputKodeKelasBaru}
+                    onChange={(e) => setInputKodeKelasBaru(e.target.value.toUpperCase())}
+                    placeholder="Contoh: HAKI-9D atau 9D-4K2X"
+                    className="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 font-mono uppercase tracking-wider focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={generateRandomKodeKelas}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-300 flex items-center gap-1 shrink-0 active:scale-95"
+                    title="Generate Kode Acak"
+                  >
+                    <span>🎲</span> Acak
+                  </button>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Klik <strong>"🎲 Acak"</strong> untuk menghasilkan kode unik otomatis, atau ketik kode manual.
+                </span>
               </div>
 
               {pesanSuksesKelas && (
