@@ -37,10 +37,129 @@ export default function InvestigasiPage() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // State LKPD Digital (Sesuai skema tabel lkpd_reports)
+  const [buktiPetunjuk, setBuktiPetunjuk] = useState("");
+  const [analisisPelanggaran, setAnalisisPelanggaran] = useState("");
+  const [solusiRekomendasi, setSolusiRekomendasi] = useState("");
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [activeTabMobile, setActiveTabMobile] = useState<"chat" | "lembar">("chat");
+  const [showKasusModal, setShowKasusModal] = useState(false);
+
   // Auto-scroll ke pesan terbaru
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [pesan, isLoading]);
+
+  // Load existing laporan LKPD saat masuk kelompok & identitas lengkap
+  useEffect(() => {
+    if (!kelompokAktif || !isIdentitasLengkap || !kelas) return;
+
+    const muatLkpd = async () => {
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("lkpd_reports")
+          .select("bukti_petunjuk, analisis_pelanggaran, solusi_rekomendasi, is_submitted")
+          .eq("kelompok", kelompokAktif)
+          .eq("kelas", kelas)
+          .maybeSingle();
+
+        if (data) {
+          if (data.bukti_petunjuk) setBuktiPetunjuk(data.bukti_petunjuk);
+          if (data.analisis_pelanggaran) setAnalisisPelanggaran(data.analisis_pelanggaran);
+          if (data.solusi_rekomendasi) setSolusiRekomendasi(data.solusi_rekomendasi);
+          if (typeof data.is_submitted === "boolean") setIsSubmitted(data.is_submitted);
+        }
+      } catch (err) {
+        console.error("Gagal memuat LKPD sebelumnya:", err);
+      }
+    };
+
+    muatLkpd();
+  }, [kelompokAktif, isIdentitasLengkap, kelas]);
+
+  // Fungsi simpan LKPD ke tabel lkpd_reports di Supabase
+  const simpanKeDatabase = async (
+    bukti: string, 
+    analisis: string, 
+    solusi: string, 
+    submitted: boolean = isSubmitted
+  ) => {
+    if (!kelompokAktif || !kelas) return;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+      setSaveStatus("saved");
+      return;
+    }
+
+    setSaveStatus("saving");
+    try {
+      const { data: existing } = await supabase
+        .from("lkpd_reports")
+        .select("id")
+        .eq("kelompok", kelompokAktif)
+        .eq("kelas", kelas)
+        .maybeSingle();
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from("lkpd_reports")
+          .update({
+            bukti_petunjuk: bukti,
+            analisis_pelanggaran: analisis,
+            solusi_rekomendasi: solusi,
+            is_submitted: submitted,
+            kasus_id: kasusAktif.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", existing.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("lkpd_reports")
+          .insert({
+            kelompok: kelompokAktif,
+            kelas: kelas,
+            kasus_id: kasusAktif.id,
+            bukti_petunjuk: bukti,
+            analisis_pelanggaran: analisis,
+            solusi_rekomendasi: solusi,
+            is_submitted: submitted
+          });
+
+        if (insertError) throw insertError;
+      }
+      setSaveStatus("saved");
+    } catch (err) {
+      console.error("Gagal simpan LKPD ke lkpd_reports:", err);
+      setSaveStatus("error");
+    }
+  };
+
+  // Debounce Auto-Save ketika siswa mengetik (1.5 detik)
+  useEffect(() => {
+    if (!isIdentitasLengkap) return;
+    setSaveStatus("saving");
+    const timer = setTimeout(() => {
+      simpanKeDatabase(buktiPetunjuk, analisisPelanggaran, solusiRekomendasi, isSubmitted);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [buktiPetunjuk, analisisPelanggaran, solusiRekomendasi]);
+
+  // Handler kirim final LKPD
+  const handleFinalSubmit = async () => {
+    const konfirmasi = window.confirm(
+      "Apakah Anda yakin ingin MENGIRIM FINAL LKPD ini?\nGuru Anda akan langsung menerima laporan akhir kelompok Anda."
+    );
+    if (!konfirmasi) return;
+
+    setIsSubmitted(true);
+    await simpanKeDatabase(buktiPetunjuk, analisisPelanggaran, solusiRekomendasi, true);
+    alert("🎉 Laporan LKPD berhasil dikirim ke Guru!");
+  };
 
   // Jika kelompok belum dipilih, tampilkan layar pemilihan kelompok
   if (!kelompokAktif) {
@@ -153,7 +272,7 @@ export default function InvestigasiPage() {
     setIsLoading(true);
 
     try {
-      // 1. Simpan pesan user ke Supabase (jika sudah dikonfigurasi)
+      // Simpan riwayat chat ke Supabase (jika sudah dikonfigurasi)
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
         const { error: insertError } = await supabase.from("chat_history").insert({
           kelompok: kelompokAktif,
@@ -226,7 +345,7 @@ export default function InvestigasiPage() {
         }
       }
 
-      // 2. Simpan pesan AI ke Supabase setelah selesai stream
+      // Simpan pesan AI ke Supabase setelah selesai stream
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
         const { error: aiInsertError } = await supabase.from("chat_history").insert({
           kelompok: kelompokAktif,
@@ -248,114 +367,328 @@ export default function InvestigasiPage() {
   };
 
   return (
-    <div className="h-[100dvh] bg-slate-50 flex flex-col md:flex-row p-2 md:p-4 gap-4 md:gap-6 overflow-hidden">
-      {/* Sidebar Informasi Kasus Khusus Kelompok */}
-      <div className="w-full md:w-1/3 lg:w-1/4 bg-slate-900 p-4 md:p-6 rounded-3xl shadow-lg border border-slate-800 text-white flex flex-col relative overflow-y-auto shrink-0 max-h-[25vh] md:max-h-none">
-        {/* Dekorasi Background */}
-        <div className="absolute top-0 right-0 p-8 opacity-5 text-9xl">📁</div>
-
-        <div className="relative z-10">
-          <div className="inline-block px-3 py-1 bg-blue-600 rounded-full text-xs font-bold tracking-widest mb-6">
-            KOTAK MASUK KELOMPOK {kelompokAktif}
-          </div>
-          <h2 className="text-2xl font-black mb-2 leading-tight">
-            Kasus #{kasusAktif.id}
-          </h2>
-          <h3 className="text-xl text-blue-400 font-bold mb-6">
-            {kasusAktif.judul}
-          </h3>
-          
-          <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700 mb-6">
-            <h4 className="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wide">Ringkasan Laporan</h4>
-            <p className="text-slate-300 leading-relaxed text-sm">
-              {kasusAktif.deskripsi}
-            </p>
-          </div>
-
-          <button 
-            onClick={() => setKelompokAktif(null)}
-            className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all font-semibold text-sm border border-slate-700"
-          >
-            ← Ganti Kelompok
-          </button>
-        </div>
-      </div>
-
-      {/* Chat Area (Saksi Mata AI) */}
-      <div className="flex-1 bg-white rounded-3xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center gap-4 bg-white">
-          <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
-            <img src="/logo.png" alt="AI" className="w-full h-full object-contain" />
+    <div className="h-[100dvh] bg-slate-900 flex flex-col overflow-hidden text-slate-100">
+      {/* Top Bar Header */}
+      <header className="bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex items-center justify-between shrink-0 z-20 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 flex items-center justify-center">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h2 className="font-bold text-lg text-slate-800">Saksi Mata AI</h2>
-            <p className="text-sm text-slate-500">
-              Merespons untuk Kelompok {kelompokAktif}
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-white text-base md:text-lg tracking-wide">DETEKTIF HAKI</span>
+              <span className="text-xs bg-blue-600/30 text-blue-400 font-bold px-2 py-0.5 rounded-full border border-blue-500/30">
+                Kelompok {kelompokAktif} ({kelas})
+              </span>
+              {isSubmitted && (
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  ✓ LKPD Final Terkirim
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 truncate max-w-[200px] md:max-w-md">
+              Anggota: {namaAnggota}
             </p>
           </div>
         </div>
+
+        {/* Action Buttons Top Bar */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowKasusModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all"
+            title="Buka Berkas Kasus"
+          >
+            <span>📁</span>
+            <span className="hidden sm:inline">Berkas Kasus #{kasusAktif.id}</span>
+          </button>
+          <button 
+            onClick={() => setKelompokAktif(null)}
+            className="px-3 py-1.5 bg-slate-800/80 hover:bg-red-900/40 hover:text-red-300 text-slate-400 border border-slate-700 rounded-xl text-xs font-semibold transition-all"
+          >
+            Ganti Kelompok
+          </button>
+        </div>
+      </header>
+
+      {/* Tab Navigasi Mobile (Hanya tampil di layar kecil < md) */}
+      <div className="md:hidden flex border-b border-slate-800 bg-slate-800/60 shrink-0">
+        <button
+          onClick={() => setActiveTabMobile("chat")}
+          className={`flex-1 py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-b-2 ${
+            activeTabMobile === "chat" 
+              ? "border-blue-500 text-blue-400 bg-blue-500/10" 
+              : "border-transparent text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <span>💬</span> Ruang Interogasi AI
+        </button>
+        <button
+          onClick={() => setActiveTabMobile("lembar")}
+          className={`flex-1 py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-b-2 relative ${
+            activeTabMobile === "lembar" 
+              ? "border-emerald-500 text-emerald-400 bg-emerald-500/10" 
+              : "border-transparent text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <span>📝</span> LKPD Digital
+          {isSubmitted ? (
+            <span className="text-[10px] bg-emerald-500 text-slate-900 font-bold px-1.5 rounded-full ml-1">✓</span>
+          ) : saveStatus === "saving" ? (
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping absolute top-2 right-4"></span>
+          ) : null}
+        </button>
+      </div>
+
+      {/* Layout Konten Utama: 2 Kolom di Desktop (Kiri: Chat, Kanan: LKPD Digital) */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-2 md:p-4 gap-3 md:gap-4 bg-slate-950">
         
-        <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-6 bg-slate-50/50">
-          {pesan.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-6 max-w-md mx-auto text-center px-4">
-              <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-5xl shadow-inner shadow-blue-200/50">
-                🔎
+        {/* PANEL KIRI: Ruang Chat Interogasi Saksi AI */}
+        <section 
+          className={`flex-1 bg-white rounded-3xl shadow-sm border border-slate-200 flex flex-col overflow-hidden ${
+            activeTabMobile === "lembar" ? "hidden md:flex" : "flex"
+          }`}
+        >
+          {/* Header Chat */}
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-center overflow-hidden">
+                <img src="/logo.png" alt="AI" className="w-7 h-7 object-contain" />
               </div>
               <div>
-                <h3 className="font-bold text-xl text-slate-700 mb-2">Siap Memulai Interogasi?</h3>
-                <p className="text-sm text-slate-500 mb-4">
-                  Saksi Mata AI siap membantu Tim Detektif {kelompokAktif}. Namun ingat, dia hanya akan memberikan petunjuk, bukan jawaban langsung!
+                <h2 className="font-bold text-slate-800 text-sm md:text-base leading-tight">Saksi Mata Digital AI</h2>
+                <p className="text-xs text-slate-500">
+                  Konteks: {kasusAktif.judul}
                 </p>
-                <div className="bg-white border border-slate-200 rounded-xl p-4 text-left shadow-sm">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tips Bertanya:</h4>
-                  <ul className="text-sm text-slate-600 space-y-2 list-disc list-inside">
-                    <li>Tanyakan kronologi kejadian.</li>
-                    <li>Tanyakan bukti digital yang ditemukan.</li>
-                    <li>Cari tahu hukum HAKI apa yang dilanggar.</li>
-                  </ul>
-                </div>
               </div>
             </div>
-          ) : (
-            pesan.map((p, i) => (
-              <div key={i} className={`flex ${p.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] md:max-w-[75%] p-4 rounded-2xl shadow-sm ${
-                  p.role === "user" 
-                    ? "bg-blue-600 text-white rounded-br-sm" 
-                    : "bg-white border border-slate-100 text-slate-800 rounded-bl-sm"
-                }`}>
-                  {p.content}
+            <button
+              onClick={() => setShowKasusModal(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 font-semibold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 md:hidden"
+            >
+              Lihat Kasus
+            </button>
+          </div>
+          
+          {/* Chat Messages Container */}
+          <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 bg-slate-50/70">
+            {pesan.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4 max-w-sm mx-auto text-center px-4">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-4xl shadow-inner shadow-blue-200/50">
+                  🔎
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-700 mb-1">Mulai Interogasi Saksi</h3>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Tanyakan bukti dan alibi digital. Catat temuannya di panel LKPD Digital sebelah kanan!
+                  </p>
+                  <div className="bg-white border border-slate-200 rounded-xl p-3 text-left shadow-sm">
+                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tips Bertanya:</h4>
+                    <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
+                      <li>"Siapa yang pertama kali menemukan pelanggaran ini?"</li>
+                      <li>"Apakah ada bukti forum anonim atau jejak digital?"</li>
+                      <li>"Hak ekonomi/moral apa yang dilanggar dari pencipta?"</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
-            ))
-          )}
-          {isLoading && pesan[pesan.length - 1]?.role !== 'assistant' && (
-             <div className="flex justify-start">
-               <div className="bg-white border border-slate-100 text-slate-500 p-4 rounded-2xl rounded-bl-sm animate-pulse shadow-sm">
-                 Sedang mencari petunjuk...
+            ) : (
+              pesan.map((p, i) => (
+                <div key={i} className={`flex ${p.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] md:max-w-[80%] p-3.5 rounded-2xl shadow-sm text-sm ${
+                    p.role === "user" 
+                      ? "bg-blue-600 text-white rounded-br-sm" 
+                      : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm leading-relaxed"
+                  }`}>
+                    {p.content}
+                  </div>
+                </div>
+              ))
+            )}
+            {isLoading && pesan[pesan.length - 1]?.role !== 'assistant' && (
+               <div className="flex justify-start">
+                 <div className="bg-white border border-slate-200 text-slate-500 text-xs px-4 py-3 rounded-2xl rounded-bl-sm animate-pulse shadow-sm flex items-center gap-2">
+                   <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                   Saksi sedang mengingat kembali petunjuk...
+                 </div>
                </div>
-             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
-        <form onSubmit={kirimPesan} className="sticky bottom-0 p-4 border-t border-slate-200 bg-white flex gap-3 z-20 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
-          <input
-            type="text"
-            value={inputUser}
-            onChange={(e) => setInputUser(e.target.value)}
-            placeholder="Tanyakan sesuatu terkait kasus ini..."
-            className="flex-1 px-5 py-4 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 bg-slate-50 transition-all"
-          />
-          <button 
-            type="submit" 
-            disabled={isLoading || !inputUser.trim()}
-            className="px-8 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md active:scale-[0.98]"
-          >
-            Kirim
-          </button>
-        </form>
+          {/* Form Kirim Pertanyaan */}
+          <form onSubmit={kirimPesan} className="sticky bottom-0 p-3 md:p-4 border-t border-slate-200 bg-white flex gap-2 md:gap-3 z-20 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] shrink-0">
+            <input
+              type="text"
+              value={inputUser}
+              onChange={(e) => setInputUser(e.target.value)}
+              placeholder="Ketik pertanyaan untuk saksi AI..."
+              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 bg-slate-50 text-sm transition-all"
+            />
+            <button 
+              type="submit" 
+              disabled={isLoading || !inputUser.trim()}
+              className="px-5 md:px-6 py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md active:scale-[0.98] shrink-0"
+            >
+              Kirim
+            </button>
+          </form>
+        </section>
+
+        {/* PANEL KANAN: LKPD Digital (bukti_petunjuk, analisis_pelanggaran, solusi_rekomendasi) */}
+        <section 
+          className={`w-full md:w-[460px] lg:w-[500px] bg-slate-900 border border-slate-800 rounded-3xl shadow-xl flex flex-col overflow-hidden shrink-0 ${
+            activeTabMobile === "chat" ? "hidden md:flex" : "flex"
+          }`}
+        >
+          {/* Header LKPD Digital */}
+          <div className="p-4 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📋</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-white text-sm md:text-base leading-tight">LKPD Digital</h3>
+                  {isSubmitted && (
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">
+                      Final Terkirim
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400">Sinkronisasi langsung ke Dasbor Guru</p>
+              </div>
+            </div>
+
+            {/* Status Penyimpanan */}
+            <div className="flex items-center gap-2">
+              {saveStatus === "saving" && (
+                <span className="text-[11px] text-amber-400 flex items-center gap-1 font-medium bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                  Menyimpan...
+                </span>
+              )}
+              {saveStatus === "saved" && (
+                <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+                  ✓ Tersimpan
+                </span>
+              )}
+              {saveStatus === "error" && (
+                <span className="text-[11px] text-red-400 font-medium bg-red-950/60 border border-red-800/60 px-2 py-0.5 rounded-full">
+                  ⚠️ Gagal Simpan
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Form Isian LKPD (C4 & C5) */}
+          <div className="flex-1 p-4 overflow-y-auto space-y-4">
+            
+            {/* Field 1: bukti_petunjuk */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🔍</span> 1. Bukti & Petunjuk dari AI
+                </label>
+                <span className="text-[10px] text-slate-400">Log Clues</span>
+              </div>
+              <textarea
+                value={buktiPetunjuk}
+                onChange={(e) => setBuktiPetunjuk(e.target.value)}
+                placeholder="Catat fakta-fakta, kronologi, jejak forum/anonim, atau pengakuan saksi AI di sini..."
+                rows={4}
+                className="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl p-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none leading-relaxed"
+              ></textarea>
+            </div>
+
+            {/* Field 2: analisis_pelanggaran (C4) */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>⚖️</span> 2. Analisis Pelanggaran (C4)
+                </label>
+                <span className="text-[10px] text-slate-400">Jenis HAKI & UU</span>
+              </div>
+              <textarea
+                value={analisisPelanggaran}
+                onChange={(e) => setAnalisisPelanggaran(e.target.value)}
+                placeholder="Jenis HAKI apa yang dilanggar? Siapa pihak yang bersalah dan aturan hukum/UU apa yang dilanggar?..."
+                rows={4}
+                className="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl p-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all resize-none leading-relaxed"
+              ></textarea>
+            </div>
+
+            {/* Field 3: solusi_rekomendasi (C5) */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>💡</span> 3. Solusi & Rekomendasi Mitigasi (C5)
+                </label>
+                <span className="text-[10px] text-slate-400">Solusi Etis</span>
+              </div>
+              <textarea
+                value={solusiRekomendasi}
+                onChange={(e) => setSolusiRekomendasi(e.target.value)}
+                placeholder="Apa rekomendasi tindakan etis dan solusi mitigasi agar pelanggaran ini tidak terulang kembali?..."
+                rows={4}
+                className="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl p-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all resize-none leading-relaxed"
+              ></textarea>
+            </div>
+
+          </div>
+
+          {/* Footer LKPD Digital: Tombol Simpan Draft & Submit Final */}
+          <div className="p-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between gap-2 shrink-0">
+            <button
+              onClick={() => simpanKeDatabase(buktiPetunjuk, analisisPelanggaran, solusiRekomendasi, isSubmitted)}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+            >
+              <span>💾</span> Simpan Draft
+            </button>
+            <button
+              onClick={handleFinalSubmit}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 active:scale-95 ${
+                isSubmitted 
+                  ? "bg-emerald-700 text-white hover:bg-emerald-600" 
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white"
+              }`}
+            >
+              <span>🚀</span> {isSubmitted ? "Perbarui Kiriman Final" : "Kirim LKPD Final"}
+            </button>
+          </div>
+        </section>
+
       </div>
+
+      {/* Modal Berkas Kasus */}
+      {showKasusModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-lg w-full shadow-2xl relative">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-xs bg-blue-600 text-white font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                Berkas Kasus #{kasusAktif.id}
+              </span>
+              <button 
+                onClick={() => setShowKasusModal(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <h3 className="text-xl font-bold text-blue-400 mb-3">{kasusAktif.judul}</h3>
+            
+            <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 text-slate-300 text-sm leading-relaxed mb-6">
+              {kasusAktif.deskripsi}
+            </div>
+
+            <button
+              onClick={() => setShowKasusModal(false)}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg"
+            >
+              Kembali ke Investigasi
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
