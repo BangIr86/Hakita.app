@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { KODE_AKSES_KELOMPOK, DEFAULT_KELAS_LIST } from "@/lib/constants";
 
 // Menambahkan Kasus ke-3 agar genap untuk 6 kelompok
 const daftarKasus = [
@@ -26,11 +27,21 @@ const daftarKasus = [
 ];
 
 export default function InvestigasiPage() {
+  // State Sesi Kelas
+  const [kodeKelasInput, setKodeKelasInput] = useState("");
+  const [kodeKelasAktif, setKodeKelasAktif] = useState<string | null>(null);
+  const [namaKelas, setNamaKelas] = useState("");
+  const [errorKelas, setErrorKelas] = useState("");
+  const [isValidatingKelas, setIsValidatingKelas] = useState(false);
+
+  // State Kelompok & Identitas Siswa
   const [kelompokAktif, setKelompokAktif] = useState<number | null>(null);
-  const [kelas, setKelas] = useState("");
+  const [kodeAkses, setKodeAkses] = useState("");
+  const [errorKode, setErrorKode] = useState("");
   const [namaAnggota, setNamaAnggota] = useState("");
   const [isIdentitasLengkap, setIsIdentitasLengkap] = useState(false);
   
+  // State Kasus & Chat
   const [kasusAktif, setKasusAktif] = useState(daftarKasus[0]);
   const [pesan, setPesan] = useState<{ role: string; content: string }[]>([]);
   const [inputUser, setInputUser] = useState("");
@@ -51,19 +62,79 @@ export default function InvestigasiPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [pesan, isLoading]);
 
+  // Validasi Kode Kelas dari Supabase / Fallback Default
+  const handleVerifikasiKelas = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKode = kodeKelasInput.trim().toUpperCase();
+    if (!cleanKode) return;
+
+    setIsValidatingKelas(true);
+    setErrorKelas("");
+
+    try {
+      let matchedKelas: string | null = null;
+
+      // 1. Cek ke Supabase tabel kelas_sesi jika ada
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+        const { data, error } = await supabase
+          .from("kelas_sesi")
+          .select("kode_kelas, nama_kelas")
+          .ilike("kode_kelas", cleanKode)
+          .maybeSingle();
+
+        if (data) {
+          matchedKelas = data.nama_kelas;
+        }
+      }
+
+      // 2. Cek ke fallback default jika belum ditemukan di database
+      if (!matchedKelas) {
+        const fallback = DEFAULT_KELAS_LIST.find(
+          (k) => k.kode_kelas.toUpperCase() === cleanKode || k.nama_kelas.toUpperCase() === cleanKode
+        );
+        if (fallback) {
+          matchedKelas = fallback.nama_kelas;
+        }
+      }
+
+      if (matchedKelas) {
+        setNamaKelas(matchedKelas);
+        setKodeKelasAktif(cleanKode);
+        setErrorKelas("");
+      } else {
+        setErrorKelas("Kode Kelas tidak ditemukan! Silakan minta kode kelas aktif dari Guru Anda.");
+      }
+    } catch (err) {
+      console.error("Gagal verifikasi kode kelas:", err);
+      // Fallback cek lokal jika koneksi error
+      const fallback = DEFAULT_KELAS_LIST.find(
+        (k) => k.kode_kelas.toUpperCase() === cleanKode || k.nama_kelas.toUpperCase() === cleanKode
+      );
+      if (fallback) {
+        setNamaKelas(fallback.nama_kelas);
+        setKodeKelasAktif(cleanKode);
+        setErrorKelas("");
+      } else {
+        setErrorKelas("Kode Kelas tidak valid atau server tidak merespons.");
+      }
+    } finally {
+      setIsValidatingKelas(false);
+    }
+  };
+
   // Load existing laporan LKPD saat masuk kelompok & identitas lengkap
   useEffect(() => {
-    if (!kelompokAktif || !isIdentitasLengkap || !kelas) return;
+    if (!kelompokAktif || !isIdentitasLengkap || !namaKelas) return;
 
     const muatLkpd = async () => {
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) return;
 
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("lkpd_reports")
           .select("bukti_petunjuk, analisis_pelanggaran, solusi_rekomendasi, is_submitted")
           .eq("kelompok", kelompokAktif)
-          .eq("kelas", kelas)
+          .eq("kelas", namaKelas)
           .maybeSingle();
 
         if (data) {
@@ -78,7 +149,7 @@ export default function InvestigasiPage() {
     };
 
     muatLkpd();
-  }, [kelompokAktif, isIdentitasLengkap, kelas]);
+  }, [kelompokAktif, isIdentitasLengkap, namaKelas]);
 
   // Fungsi simpan LKPD ke tabel lkpd_reports di Supabase
   const simpanKeDatabase = async (
@@ -87,7 +158,7 @@ export default function InvestigasiPage() {
     solusi: string, 
     submitted: boolean = isSubmitted
   ) => {
-    if (!kelompokAktif || !kelas) return;
+    if (!kelompokAktif || !namaKelas) return;
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
       setSaveStatus("saved");
       return;
@@ -99,7 +170,7 @@ export default function InvestigasiPage() {
         .from("lkpd_reports")
         .select("id")
         .eq("kelompok", kelompokAktif)
-        .eq("kelas", kelas)
+        .eq("kelas", namaKelas)
         .maybeSingle();
 
       if (existing) {
@@ -121,7 +192,7 @@ export default function InvestigasiPage() {
           .from("lkpd_reports")
           .insert({
             kelompok: kelompokAktif,
-            kelas: kelas,
+            kelas: namaKelas,
             kasus_id: kasusAktif.id,
             bukti_petunjuk: bukti,
             analisis_pelanggaran: analisis,
@@ -161,11 +232,10 @@ export default function InvestigasiPage() {
     alert("🎉 Laporan LKPD berhasil dikirim ke Guru!");
   };
 
-  // Jika kelompok belum dipilih, tampilkan layar pemilihan kelompok
-  if (!kelompokAktif) {
+  // TAHAP 1: INPUT KODE KELAS (JIKA KELAS BELUM DISETEL)
+  if (!kodeKelasAktif) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
-        {/* Tombol Kembali ke Beranda */}
         <button 
           onClick={() => window.location.href = '/'}
           className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
@@ -173,14 +243,92 @@ export default function InvestigasiPage() {
           <span>←</span> Kembali ke Beranda
         </button>
 
-        <div className="text-center mb-10 mt-12 md:mt-0">
-          <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="Logo" className="w-20 h-20 object-contain drop-shadow-lg" />
+        <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700 max-w-md w-full text-center">
+          <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-lg" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">
+            DETEKTIF HAKI
+          </h1>
+          <p className="text-slate-400 text-xs md:text-sm mb-6">
+            Masukkan Kode Akses Kelas yang dibagikan oleh Guru Anda untuk memulai investigasi.
+          </p>
+
+          <form onSubmit={handleVerifikasiKelas} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span>🎓</span> Kode Akses Kelas
+              </label>
+              <input
+                type="text"
+                required
+                value={kodeKelasInput}
+                onChange={(e) => {
+                  setKodeKelasInput(e.target.value);
+                  if (errorKelas) setErrorKelas("");
+                }}
+                placeholder="Contoh: HAKI-9A"
+                className={`w-full bg-slate-900 border rounded-2xl px-4 py-3.5 text-white font-mono uppercase tracking-widest text-center text-lg focus:outline-none transition-all ${
+                  errorKelas 
+                    ? "border-red-500 bg-red-950/20 focus:ring-2 focus:ring-red-500" 
+                    : "border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                }`}
+              />
+              {errorKelas && (
+                <p className="text-red-400 text-xs mt-2 font-medium flex items-center gap-1">
+                  <span>⚠️</span> {errorKelas}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isValidatingKelas || !kodeKelasInput.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg hover:-translate-y-0.5 text-sm flex items-center justify-center gap-2"
+            >
+              {isValidatingKelas ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Memverifikasi Kelas...
+                </>
+              ) : (
+                "Lanjut ke Pemilihan Kelompok →"
+              )}
+            </button>
+          </form>
+
+          <p className="text-[11px] text-slate-500 mt-6 italic">
+            Tips: Guru dapat men-generate kode kelas baru melalui Dasbor Guru.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // TAHAP 2: PEMILIHAN KELOMPOK (1-6)
+  if (!kelompokAktif) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
+        {/* Tombol Ganti Kelas */}
+        <button 
+          onClick={() => {
+            setKodeKelasAktif(null);
+            setNamaKelas("");
+            setKodeKelasInput("");
+          }}
+          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
+        >
+          <span>←</span> Ganti Kelas
+        </button>
+
+        <div className="text-center mb-8 mt-12 md:mt-0">
+          <div className="inline-block px-4 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
+            Sesi Kelas: {namaKelas} ({kodeKelasAktif})
+          </div>
+          <h1 className="text-3xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
             Identifikasi Tim Detektif
           </h1>
-          <p className="text-slate-400 text-lg">Silakan pilih kelompok Anda untuk menerima berkas kasus spesifik.</p>
+          <p className="text-slate-400 text-sm md:text-base">Silakan pilih nomor kelompok Anda untuk menerima berkas kasus spesifik.</p>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-3xl w-full">
@@ -189,6 +337,8 @@ export default function InvestigasiPage() {
               key={num}
               onClick={() => {
                 setKelompokAktif(num);
+                setKodeAkses("");
+                setErrorKode("");
                 const kasusAssigned = daftarKasus.find(k => k.kelompok.includes(num));
                 if (kasusAssigned) {
                   setKasusAktif(kasusAssigned);
@@ -206,54 +356,87 @@ export default function InvestigasiPage() {
     );
   }
 
-  // Jika kelompok sudah dipilih tapi identitas belum lengkap
+  // TAHAP 3: REGISTRASI TIM (KODE RAHASIA KELOMPOK + NAMA ANGGOTA)
   if (kelompokAktif && !isIdentitasLengkap) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
         <button 
-          onClick={() => setKelompokAktif(null)}
+          onClick={() => {
+            setKelompokAktif(null);
+            setKodeAkses("");
+            setErrorKode("");
+          }}
           className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
         >
           <span>←</span> Kembali Pilih Kelompok
         </button>
 
         <div className="bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-700 max-w-md w-full">
-          <div className="text-center mb-8">
-            <div className="text-5xl mb-4">📝</div>
-            <h2 className="text-2xl font-bold text-white mb-2">Registrasi Tim {kelompokAktif}</h2>
-            <p className="text-slate-400 text-sm">Masukkan identitas anggota tim sebelum memulai investigasi.</p>
+          <div className="text-center mb-6">
+            <div className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
+              Kelas {namaKelas}
+            </div>
+            <div className="text-5xl mb-2">🔐</div>
+            <h2 className="text-2xl font-bold text-white mb-1">Registrasi Tim {kelompokAktif}</h2>
+            <p className="text-slate-400 text-xs">Masukkan kode rahasia kelompok dan nama anggota tim Anda.</p>
           </div>
           
           <form onSubmit={(e) => {
             e.preventDefault();
-            if(kelas.trim() && namaAnggota.trim()) setIsIdentitasLengkap(true);
-          }} className="space-y-5">
+            const kodeYangBenar = KODE_AKSES_KELOMPOK[kelompokAktif];
+            if (kodeAkses.trim().toUpperCase() !== kodeYangBenar) {
+              setErrorKode(`Kode akses untuk Kelompok ${kelompokAktif} salah! Silakan tanyakan kode rahasia kepada Guru.`);
+              return;
+            }
+            setErrorKode("");
+            if (namaAnggota.trim()) {
+              setIsIdentitasLengkap(true);
+            }
+          }} className="space-y-4">
+            
+            {/* Input Kode Rahasia Kelompok */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Kelas</label>
+              <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <span>🔑</span> Kode Masuk Kelompok {kelompokAktif}
+              </label>
               <input 
                 type="text" 
                 required
-                value={kelas}
-                onChange={(e) => setKelas(e.target.value)}
-                placeholder="Contoh: 9A" 
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                value={kodeAkses}
+                onChange={(e) => {
+                  setKodeAkses(e.target.value);
+                  if (errorKode) setErrorKode("");
+                }}
+                placeholder={`Masukkan kode (Contoh: ${KODE_AKSES_KELOMPOK[kelompokAktif]})`}
+                className={`w-full bg-slate-900 border rounded-xl px-4 py-3 text-white font-mono uppercase tracking-widest focus:outline-none transition-all ${
+                  errorKode 
+                    ? "border-red-500 bg-red-950/20 focus:ring-1 focus:ring-red-500" 
+                    : "border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                }`}
               />
+              {errorKode && (
+                <p className="text-red-400 text-xs mt-1.5 font-medium flex items-center gap-1">
+                  <span>⚠️</span> {errorKode}
+                </p>
+              )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Nama Anggota (Pisahkan dengan koma)</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">Nama Anggota (Pisahkan dengan koma)</label>
               <textarea 
                 required
                 value={namaAnggota}
                 onChange={(e) => setNamaAnggota(e.target.value)}
                 placeholder="Contoh: Budi, Andi, Siska" 
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-24 resize-none transition-all"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-24 resize-none transition-all"
               ></textarea>
             </div>
+
             <button 
               type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all hover:-translate-y-1 shadow-lg mt-4"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg mt-2 text-sm"
             >
-              Mulai Investigasi
+              Verifikasi & Mulai Investigasi 🔍
             </button>
           </form>
         </div>
@@ -276,7 +459,7 @@ export default function InvestigasiPage() {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
         const { error: insertError } = await supabase.from("chat_history").insert({
           kelompok: kelompokAktif,
-          kelas: kelas,
+          kelas: namaKelas,
           nama_anggota: namaAnggota,
           kasus_id: kasusAktif.id,
           role: "user",
@@ -349,7 +532,7 @@ export default function InvestigasiPage() {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
         const { error: aiInsertError } = await supabase.from("chat_history").insert({
           kelompok: kelompokAktif,
-          kelas: kelas,
+          kelas: namaKelas,
           nama_anggota: namaAnggota,
           kasus_id: kasusAktif.id,
           role: "assistant",
@@ -378,7 +561,7 @@ export default function InvestigasiPage() {
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-white text-base md:text-lg tracking-wide">DETEKTIF HAKI</span>
               <span className="text-xs bg-blue-600/30 text-blue-400 font-bold px-2 py-0.5 rounded-full border border-blue-500/30">
-                Kelompok {kelompokAktif} ({kelas})
+                Kelompok {kelompokAktif} ({namaKelas})
               </span>
               {isSubmitted && (
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
@@ -554,7 +737,7 @@ export default function InvestigasiPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400">Sinkronisasi langsung ke Dasbor Guru</p>
+                <p className="text-[11px] text-slate-400">Kelas {namaKelas} • Sinkron ke Dasbor Guru</p>
               </div>
             </div>
 

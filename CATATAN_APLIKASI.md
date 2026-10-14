@@ -38,6 +38,16 @@ Dalam 1 kelas diatur memiliki **6 Kelompok**, di mana **1 kasus diteliti oleh 2 
 | **Kasus #2** | Plagiarisme Desain Maskot | Kelompok 3 & 4 | Sebuah kafe boba populer diduga menjiplak desain maskot dari seniman DeviantArt. Pemilik kafe beralasan membeli murah dari seorang pekerja lepas (*freelancer*). |
 | **Kasus #3** | Pencurian Konten Video (Re-uploader) | Kelompok 5 & 6 | Video eksperimen sains edukasi milik YouTube sekolah dicuri, dihilangkan *watermark*-nya, lalu diunggah ulang ke akun TikTok orang lain untuk mengeruk keuntungan iklan/AdSense. |
 
+### 🔑 Daftar Kode Akses Masuk Kelompok (`lib/constants.ts`):
+Setiap kelompok harus memasukkan kode akses rahasia sebelum dapat melakukan investigasi:
+* **Kelompok 1**: `HAKI-01`
+* **Kelompok 2**: `HAKI-02`
+* **Kelompok 3**: `HAKI-03`
+* **Kelompok 4**: `HAKI-04`
+* **Kelompok 5**: `HAKI-05`
+* **Kelompok 6**: `HAKI-06`
+*(Daftar kode ini dapat diubah guru sewaktu-waktu di `lib/constants.ts` dan dapat dilihat langsung oleh guru di Dasbor Guru melalui tombol "🔑 Kode Siswa").*
+
 ---
 
 ## 4. DESIGN PROMPT & PERSONA AI ("SAKSI MATA DIGITAL")
@@ -122,6 +132,25 @@ CREATE TABLE lkpd_reports (
 ALTER TABLE lkpd_reports ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Enable insert and update for anonymous users" 
 ON lkpd_reports FOR ALL USING (true) WITH CHECK (true);
+
+-- Tabel Sesi Kelas (Untuk Generate Kode Akses per Kelas)
+CREATE TABLE kelas_sesi (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  kode_kelas text UNIQUE NOT NULL,
+  nama_kelas text NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE kelas_sesi ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all for anonymous users" 
+ON kelas_sesi FOR ALL USING (true) WITH CHECK (true);
+
+-- Data Default (Opsional)
+INSERT INTO kelas_sesi (kode_kelas, nama_kelas) VALUES 
+  ('HAKI-9A', '9A'),
+  ('HAKI-9B', '9B'),
+  ('HAKI-9C', '9C')
+ON CONFLICT (kode_kelas) DO NOTHING;
 ```
 
 ### File Variabel Lingkungan (`.env.local`)
