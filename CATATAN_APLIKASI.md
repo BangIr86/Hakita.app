@@ -61,11 +61,17 @@ Prompt sistem (disetel di `app/api/chat/route.ts`) dirancang dengan aturan pedag
    * Menampilkan judul misi, logo detektif, dan tombol *"Mulai Investigasi 🔍"*.
 2. **Pemilihan Kelompok (`/investigasi` - Layar 1)**:
    * Menampilkan kartu Kelompok 1 sampai 6. Siswa mengklik kelompok mereka.
-3. **Form Registrasi Tim (`/investigasi` - Layar 2)**:
-   * Muncul form modal: Siswa wajib mengisi **Kelas** (misal: `9A`) dan **Nama Anggota** (misal: `Andi, Siti, Doni`).
-4. **Ruang Investigasi Chat (`/investigasi` - Layar 3)**:
-   * **Sidebar Kasus**: Menampilkan nomor kasus, judul, ringkasan berkas, dan tombol *"Ganti Kelompok"*.
-   * **Chat Interogasi**: Berisi petunjuk awal jika masih kosong (*tips interogasi*), bubble chat interaktif, auto-scroll mulus ke pesan paling baru, serta form input teks yang bersifat *sticky* (tetap berada di atas virtual keyboard HP/tablet).
+3. **Form Registrasi Tim (`/investigasi` - Layar 2 / Bagian I LKPD)**:
+   * Siswa membagi peran tim: Interregator AI, Pencatat Bukti, Analis HAKI, dan Anggota 4 (Solusi & Mitigasi).
+4. **Ruang Investigasi Dual Layout (`/investigasi` - Layar 3)**:
+   * **Panel Kiri (Interogasi AI)**: Chat interogasi real-time dengan Saksi Mata Digital (AI) untuk menggali bukti dan kronologi pelanggaran.
+   * **Panel Kanan (Berkas Investigasi LKPD)**: Terdiri dari 5 bagian:
+     - **BAGIAN I**: Identitas Tim Detektif & Pembagian Peran.
+     - **BAGIAN II**: Catatan Bukti Investigasi (Evidence Log from AI: Petunjuk 1, 2, 3).
+     - **BAGIAN III**: Lembar Analisis HAKI (HOTS - C4: Tindakan pelanggaran, Jenis HAKI/Lisensi, Pihak yang dirugikan & kerugian).
+     - **BAGIAN IV**: Rekomendasi Solusi & Mitigasi Kasus (HOTS - C5: Solusi adil untuk korban, Aturan etis masa depan).
+     - **BAGIAN V**: Jurnal Refleksi Diri (Pelajaran berharga tentang Hak Cipta).
+   * Fitur: Auto-save otomatis ke database Supabase tabel `lkpd_reports` dan tombol Kirim Final Laporan ke Guru.
 
 ### B. Alur Guru / Admin (Teacher Journey)
 1. **Login Dasbor Guru (`/admin`)**:

@@ -402,83 +402,153 @@ export default function AdminDashboard() {
             <div className="flex-1 p-4 md:p-6 overflow-y-auto bg-slate-50/60 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400">
               
               {/* TAB 1: LAPORAN LKPD DIGITAL (lkpd_reports) */}
-              {activeTab === "lkpd" && (
-                <div className="space-y-5 max-w-4xl mx-auto">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                        <span>📋</span> Laporan LKPD Digital
-                      </h3>
-                      {selectedGroupData.is_submitted ? (
-                        <span className="text-xs bg-emerald-500 text-white font-bold px-2 py-0.5 rounded-full">
-                          Final
-                        </span>
-                      ) : (
-                        <span className="text-xs bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full">
-                          Draft
+              {activeTab === "lkpd" && (() => {
+                const parseBukti = (raw: string) => {
+                  try {
+                    return JSON.parse(raw);
+                  } catch {
+                    return { p1: raw, p2: "", p3: "" };
+                  }
+                };
+                const parseAnalisis = (raw: string) => {
+                  try {
+                    return JSON.parse(raw);
+                  } catch {
+                    return { tindakan: raw, jenis: "", kerugian: "" };
+                  }
+                };
+                const parseSolusi = (raw: string) => {
+                  try {
+                    return JSON.parse(raw);
+                  } catch {
+                    return { solusi: raw, aturan: "", refleksi: "" };
+                  }
+                };
+
+                const bukti = parseBukti(selectedGroupData.bukti_petunjuk);
+                const analisis = parseAnalisis(selectedGroupData.analisis_pelanggaran);
+                const solusi = parseSolusi(selectedGroupData.solusi_rekomendasi);
+
+                return (
+                  <div className="space-y-5 max-w-4xl mx-auto">
+                    <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                          <span>📋</span> Berkas Investigasi Kelompok {selectedKelompok}
+                        </h3>
+                        {selectedGroupData.is_submitted ? (
+                          <span className="text-xs bg-emerald-600 text-white font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                            <span>✓</span> Final Terkirim
+                          </span>
+                        ) : (
+                          <span className="text-xs bg-amber-500 text-white font-bold px-2.5 py-0.5 rounded-full">
+                            Draft (Belum Submit)
+                          </span>
+                        )}
+                      </div>
+                      {selectedGroupData.updated_at && (
+                        <span className="text-xs text-slate-500">
+                          Update Terakhir: {new Date(selectedGroupData.updated_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
                         </span>
                       )}
                     </div>
-                    {selectedGroupData.updated_at && (
-                      <span className="text-[11px] text-slate-400">
-                        Terakhir diupdate: {new Date(selectedGroupData.updated_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
-                      </span>
-                    )}
-                  </div>
 
-                  {/* 1. bukti_petunjuk */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">1</span>
-                      <h4 className="font-bold text-slate-800 text-sm">Bukti & Petunjuk dari AI (Log Clues)</h4>
-                    </div>
-                    {selectedGroupData.bukti_petunjuk ? (
-                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        {selectedGroupData.bukti_petunjuk}
-                      </p>
-                    ) : (
-                      <div className="p-4 bg-slate-50 rounded-xl text-center border border-dashed border-slate-200">
-                        <p className="text-xs text-slate-400 italic">Siswa belum mengisi bukti & petunjuk.</p>
+                    {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">I</span>
+                        <h4 className="font-bold text-slate-800 text-sm">IDENTITAS TIM DETEKTIF</h4>
                       </div>
-                    )}
-                  </div>
-
-                  {/* 2. analisis_pelanggaran (C4) */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">2</span>
-                      <h4 className="font-bold text-slate-800 text-sm">Analisis Pelanggaran: Jenis HAKI & UU yang Dilanggar (C4)</h4>
-                    </div>
-                    {selectedGroupData.analisis_pelanggaran ? (
-                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        {selectedGroupData.analisis_pelanggaran}
-                      </p>
-                    ) : (
-                      <div className="p-4 bg-slate-50 rounded-xl text-center border border-dashed border-slate-200">
-                        <p className="text-xs text-slate-400 italic">Siswa belum mengisi analisis pelanggaran.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl text-xs text-slate-700">
+                        <div><strong className="text-slate-500 block text-[11px]">Kelas:</strong> {selectedGroupData.kelas}</div>
+                        <div><strong className="text-slate-500 block text-[11px]">Nomor Kelompok:</strong> Kelompok {selectedKelompok}</div>
+                        <div><strong className="text-slate-500 block text-[11px]">Kasus:</strong> Kasus #{selectedGroupData.kasus_id}</div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* 3. solusi_rekomendasi (C5) */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">3</span>
-                      <h4 className="font-bold text-slate-800 text-sm">Solusi Etis & Rekomendasi Mitigasi (C5)</h4>
-                    </div>
-                    {selectedGroupData.solusi_rekomendasi ? (
-                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        {selectedGroupData.solusi_rekomendasi}
-                      </p>
-                    ) : (
-                      <div className="p-4 bg-slate-50 rounded-xl text-center border border-dashed border-slate-200">
-                        <p className="text-xs text-slate-400 italic">Siswa belum mengisi solusi & rekomendasi mitigasi.</p>
+                      <div>
+                        <strong className="text-slate-500 block text-xs mb-1">Susunan Anggota Tim:</strong>
+                        <p className="text-xs text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium">
+                          {selectedGroupData.nama_anggota || "Belum ada nama anggota"}
+                        </p>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                </div>
-              )}
+                    {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG) */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                        <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">II</span>
+                        <h4 className="font-bold text-slate-800 text-sm">CATATAN BUKTI INVESTIGASI (EVIDENCE LOG FROM AI)</h4>
+                      </div>
+                      <div className="space-y-2.5 text-xs">
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-slate-600 block text-[11px] mb-1">1. Petunjuk #1 (Mengenai Pelaku/Tindakan):</strong>
+                          <p className="text-slate-800 whitespace-pre-wrap">{bukti.p1 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-slate-600 block text-[11px] mb-1">2. Petunjuk #2 (Mengenai Aset/Karya yang Dirugikan):</strong>
+                          <p className="text-slate-800 whitespace-pre-wrap">{bukti.p2 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-slate-600 block text-[11px] mb-1">3. Petunjuk #3 (Mengenai Lisensi/Status Hukum Karya):</strong>
+                          <p className="text-slate-800 whitespace-pre-wrap">{bukti.p3 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4) */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                        <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold">III</span>
+                        <h4 className="font-bold text-slate-800 text-sm">LEMBAR ANALISIS HAKI (HOTS - C4)</h4>
+                      </div>
+                      <div className="space-y-2.5 text-xs">
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-slate-600 block text-[11px] mb-1">1. Tindakan spesifik yang melanggar etika/hukum:</strong>
+                          <p className="text-slate-800 whitespace-pre-wrap">{analisis.tindakan || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-slate-600 block text-[11px] mb-1">2. Jenis Hak Kekayaan Intelektual / Lisensi yang dilanggar:</strong>
+                          <p className="text-slate-800 whitespace-pre-wrap">{analisis.jenis || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-slate-600 block text-[11px] mb-1">3. Pihak yang paling dirugikan dan dampak kerugiannya:</strong>
+                          <p className="text-slate-800 whitespace-pre-wrap">{analisis.kerugian || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI (HOTS - C5) */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                        <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">IV</span>
+                        <h4 className="font-bold text-slate-800 text-sm">REKOMENDASI SOLUSI & MITIGASI KASUS (HOTS - C5)</h4>
+                      </div>
+                      <div className="space-y-2.5 text-xs">
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-slate-600 block text-[11px] mb-1">1. Langkah penyelesaian adil untuk korban saat ini:</strong>
+                          <p className="text-slate-800 whitespace-pre-wrap">{solusi.solusi || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-slate-600 block text-[11px] mb-1">2. Aturan etis masa depan agar tidak melanggar HAKI:</strong>
+                          <p className="text-slate-800 whitespace-pre-wrap">{solusi.aturan || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BAGIAN V: JURNAL REFLEKSI DIRI */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                        <span className="w-6 h-6 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center text-xs font-bold">V</span>
+                        <h4 className="font-bold text-slate-800 text-sm">JURNAL REFLEKSI DIRI</h4>
+                      </div>
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
+                        <strong className="text-slate-600 block text-[11px] mb-1">• Hal paling berharga yang dipelajari tentang Hak Cipta:</strong>
+                        <p className="text-slate-800 whitespace-pre-wrap">{solusi.refleksi || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })()}
 
               {/* TAB 2: RIWAYAT CHAT INTEROGASI */}
               {activeTab === "chat" && (
