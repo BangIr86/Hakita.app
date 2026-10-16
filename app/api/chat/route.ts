@@ -3,6 +3,12 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+// Daftar model prioritas: jika model utama sedang lonjakan traffic (503), otomatis beralih ke cadangan
+const CANDIDATE_MODELS = [
+  "gemini-3.5-flash-lite",
+  "gemini-flash-lite-latest"
+];
+
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.GEMINI_API_KEY) {
@@ -40,11 +46,6 @@ ATURAN UTAMA:
 - Jika siswa bertanya di luar topik HAKI atau teknologi digital, tolak dengan sopan dan katakan bahwa kamu hanya memiliki informasi terkait kasus pelanggaran digital saat ini.
 - Berikan pujian saat siswa berhasil mengidentifikasi pelanggaran HAKI.`;
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-flash-lite-latest",
-      systemInstruction: systemInstruction,
-    });
-
     // Ambil riwayat chat sebelumnya kecuali pesan terbaru
     const history = rawMessages.slice(0, -1).map((msg: any) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -52,9 +53,31 @@ ATURAN UTAMA:
     }));
 
     const latestMessage = rawMessages[rawMessages.length - 1]?.content || "";
-    const chat = model.startChat({ history });
 
-    const result = await chat.sendMessageStream(latestMessage);
+    // Coba model secara berurutan dengan fallback otomatis jika terjadi 503
+    let result = null;
+    let lastError: any = null;
+
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemInstruction,
+        });
+
+        const chat = model.startChat({ history });
+        result = await chat.sendMessageStream(latestMessage);
+        if (result) break;
+      } catch (err: any) {
+        console.warn(`Model ${modelName} sedang sibuk atau error (${err.message}). Mencoba model cadangan...`);
+        lastError = err;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+
+    if (!result) {
+      throw lastError || new Error("Semua model sedang mengalami lonjakan traffic (503).");
+    }
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -83,7 +106,7 @@ ATURAN UTAMA:
     console.error("Gagal terhubung ke Gemini:", error);
     return new Response(
       JSON.stringify({ 
-        error: "Gagal memproses respons. Pastikan API Key dan nama model valid.", 
+        error: "Gagal memproses respons. Server AI sedang mengalami lonjakan beban. Silakan ajukan pertanyaan lagi.", 
         detail: error.message 
       }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
