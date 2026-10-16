@@ -530,17 +530,31 @@ export default function InvestigasiPage() {
     e.preventDefault();
     if (!inputUser.trim() || isLoading) return;
 
-    const pesanBaru = { role: "user", content: inputUser.trim() };
+    const userText = inputUser.trim();
+    const pesanBaru = { role: "user", content: userText };
     const riwayatBaru = [...pesan, pesanBaru];
     setPesan(riwayatBaru);
     setInputUser("");
     setIsLoading(true);
+
+    // Simpan pesan siswa ke Supabase chat_history jika terhubung
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+      supabase.from("chat_history").insert({
+        kelompok: kelompokAktif,
+        kelas: namaKelas,
+        nama_anggota: getGabunganNamaAnggota(),
+        kasus_id: kasusAktif.id,
+        role: "user",
+        content: userText
+      }).then();
+    }
 
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          pesan: riwayatBaru,
           messages: riwayatBaru,
           kasus: kasusAktif,
           kelompok: kelompokAktif,
@@ -568,6 +582,18 @@ export default function InvestigasiPage() {
           update[update.length - 1].content = assistantResponse;
           return update;
         });
+      }
+
+      // Simpan respons asisten AI ke Supabase chat_history jika selesai
+      if (assistantResponse && process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+        supabase.from("chat_history").insert({
+          kelompok: kelompokAktif,
+          kelas: namaKelas,
+          nama_anggota: getGabunganNamaAnggota(),
+          kasus_id: kasusAktif.id,
+          role: "assistant",
+          content: assistantResponse
+        }).then();
       }
     } catch (err) {
       console.error(err);
