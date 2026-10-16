@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { KODE_AKSES_KELOMPOK, DEFAULT_KELAS_LIST } from "@/lib/constants";
+import { DEFAULT_KELAS_LIST } from "@/lib/constants";
 
 // Menambahkan Kasus ke-3 agar genap untuk 6 kelompok
 const daftarKasus = [
@@ -36,8 +36,6 @@ export default function InvestigasiPage() {
 
   // State Kelompok & Identitas Siswa
   const [kelompokAktif, setKelompokAktif] = useState<number | null>(null);
-  const [kodeAkses, setKodeAkses] = useState("");
-  const [errorKode, setErrorKode] = useState("");
   const [namaAnggota, setNamaAnggota] = useState("");
   const [isIdentitasLengkap, setIsIdentitasLengkap] = useState(false);
   
@@ -337,8 +335,6 @@ export default function InvestigasiPage() {
               key={num}
               onClick={() => {
                 setKelompokAktif(num);
-                setKodeAkses("");
-                setErrorKode("");
                 const kasusAssigned = daftarKasus.find(k => k.kelompok.includes(num));
                 if (kasusAssigned) {
                   setKasusAktif(kasusAssigned);
@@ -356,15 +352,13 @@ export default function InvestigasiPage() {
     );
   }
 
-  // TAHAP 3: REGISTRASI TIM (KODE RAHASIA KELOMPOK + NAMA ANGGOTA)
+  // TAHAP 3: REGISTRASI TIM (NAMA ANGGOTA)
   if (kelompokAktif && !isIdentitasLengkap) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
         <button 
           onClick={() => {
             setKelompokAktif(null);
-            setKodeAkses("");
-            setErrorKode("");
           }}
           className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
         >
@@ -376,51 +370,17 @@ export default function InvestigasiPage() {
             <div className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
               Kelas {namaKelas}
             </div>
-            <div className="text-5xl mb-2">🔐</div>
-            <h2 className="text-2xl font-bold text-white mb-1">Registrasi Tim {kelompokAktif}</h2>
-            <p className="text-slate-400 text-xs">Masukkan kode rahasia kelompok dan nama anggota tim Anda.</p>
+            <div className="text-5xl mb-2">👥</div>
+            <h2 className="text-2xl font-bold text-white mb-1">Registrasi Tim Kelompok {kelompokAktif}</h2>
+            <p className="text-slate-400 text-xs">Masukkan nama anggota tim Anda untuk memulai investigasi.</p>
           </div>
           
           <form onSubmit={(e) => {
             e.preventDefault();
-            const kodeYangBenar = KODE_AKSES_KELOMPOK[kelompokAktif];
-            if (kodeAkses.trim().toUpperCase() !== kodeYangBenar) {
-              setErrorKode(`Kode akses untuk Kelompok ${kelompokAktif} salah! Silakan tanyakan kode rahasia kepada Guru.`);
-              return;
-            }
-            setErrorKode("");
             if (namaAnggota.trim()) {
               setIsIdentitasLengkap(true);
             }
           }} className="space-y-4">
-            
-            {/* Input Kode Rahasia Kelompok */}
-            <div>
-              <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <span>🔑</span> Kode Masuk Kelompok {kelompokAktif}
-              </label>
-              <input 
-                type="text" 
-                required
-                value={kodeAkses}
-                onChange={(e) => {
-                  setKodeAkses(e.target.value);
-                  if (errorKode) setErrorKode("");
-                }}
-                placeholder={`Masukkan kode (Contoh: ${KODE_AKSES_KELOMPOK[kelompokAktif]})`}
-                className={`w-full bg-slate-900 border rounded-xl px-4 py-3 text-white font-mono uppercase tracking-widest focus:outline-none transition-all ${
-                  errorKode 
-                    ? "border-red-500 bg-red-950/20 focus:ring-1 focus:ring-red-500" 
-                    : "border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                }`}
-              />
-              {errorKode && (
-                <p className="text-red-400 text-xs mt-1.5 font-medium flex items-center gap-1">
-                  <span>⚠️</span> {errorKode}
-                </p>
-              )}
-            </div>
-
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">Nama Anggota (Pisahkan dengan koma)</label>
               <textarea 
@@ -436,7 +396,7 @@ export default function InvestigasiPage() {
               type="submit" 
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg mt-2 text-sm"
             >
-              Verifikasi & Mulai Investigasi 🔍
+              Mulai Investigasi 🔍
             </button>
           </form>
         </div>

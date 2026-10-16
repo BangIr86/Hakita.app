@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { KODE_AKSES_KELOMPOK, DEFAULT_KELAS_LIST } from "@/lib/constants";
+import { DEFAULT_KELAS_LIST } from "@/lib/constants";
 import Link from "next/link";
 
 type ChatRecord = {
@@ -45,7 +45,6 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"lkpd" | "chat">("lkpd");
 
   // State Modals
-  const [showKodeModal, setShowKodeModal] = useState(false);
   const [showKelasModal, setShowKelasModal] = useState(false);
   const [inputNamaKelasBaru, setInputNamaKelasBaru] = useState("");
   const [inputKodeKelasBaru, setInputKodeKelasBaru] = useState("");
@@ -208,18 +207,11 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center gap-1.5">
               <button 
-                onClick={() => setShowKodeModal(true)} 
-                className="text-xs bg-amber-600 hover:bg-amber-500 text-white font-bold px-2 py-1 rounded-lg transition-all flex items-center gap-1 shadow-sm"
-                title="Lihat Kode Masuk Kelompok"
-              >
-                <span>🔑</span> Kode Siswa
-              </button>
-              <button 
                 onClick={fetchData} 
-                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 p-1.5 rounded-lg border border-slate-700 transition-all"
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-1 font-medium"
                 title="Refresh Data"
               >
-                🔄
+                <span>🔄</span> Refresh
               </button>
             </div>
           </div>
@@ -525,52 +517,6 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Modal Daftar Kode Akses Kelompok */}
-      {showKodeModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 border border-slate-200 relative">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🔑</span>
-                <h3 className="text-lg font-bold text-slate-800">Kode Masuk Kelompok</h3>
-              </div>
-              <button 
-                onClick={() => setShowKodeModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              Bagikan kode rahasia ini ke masing-masing kelompok siswa agar mereka dapat melakukan registrasi dan masuk ke ruang investigasi.
-            </p>
-
-            <div className="space-y-2 mb-6">
-              {[1, 2, 3, 4, 5, 6].map((num) => (
-                <div key={num} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
-                      {num}
-                    </span>
-                    <span className="font-bold text-sm text-slate-700">Kelompok {num}</span>
-                  </div>
-                  <span className="font-mono font-bold text-sm bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1 rounded-lg tracking-wider">
-                    {KODE_AKSES_KELOMPOK[num]}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowKodeModal(false)}
-              className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm transition-all shadow-md"
-            >
-              Tutup
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Modal Generate Kode Kelas Baru */}
       {showKelasModal && (

@@ -38,17 +38,8 @@ Dalam 1 kelas diatur memiliki **6 Kelompok**, di mana **1 kasus diteliti oleh 2 
 | **Kasus #2** | Plagiarisme Desain Maskot | Kelompok 3 & 4 | Sebuah kafe boba populer diduga menjiplak desain maskot dari seniman DeviantArt. Pemilik kafe beralasan membeli murah dari seorang pekerja lepas (*freelancer*). |
 | **Kasus #3** | Pencurian Konten Video (Re-uploader) | Kelompok 5 & 6 | Video eksperimen sains edukasi milik YouTube sekolah dicuri, dihilangkan *watermark*-nya, lalu diunggah ulang ke akun TikTok orang lain untuk mengeruk keuntungan iklan/AdSense. |
 
-### 🔑 Daftar Kode Akses Masuk Kelompok (`lib/constants.ts`):
-Setiap kelompok harus memasukkan kode akses rahasia sebelum dapat melakukan investigasi:
-* **Kelompok 1**: `HAKI-01`
-* **Kelompok 2**: `HAKI-02`
-* **Kelompok 3**: `HAKI-03`
-* **Kelompok 4**: `HAKI-04`
-* **Kelompok 5**: `HAKI-05`
-* **Kelompok 6**: `HAKI-06`
-*(Daftar kode ini dapat diubah guru sewaktu-waktu di `lib/constants.ts` dan dapat dilihat langsung oleh guru di Dasbor Guru melalui tombol "🔑 Kode Siswa").*
-
 ---
+
 
 ## 4. DESIGN PROMPT & PERSONA AI ("SAKSI MATA DIGITAL")
 
