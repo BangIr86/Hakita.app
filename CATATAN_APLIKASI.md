@@ -212,10 +212,15 @@ hakita-app/
 
 ---
 
-## 9. IDE / TOPIK UNTUK DISKUSI LANJUTAN DENGAN GEMINI
+## 9. STATUS PENGEMBANGAN & TAHAP BERIKUTNYA
 
-Topik yang siap dibahas untuk pengembangan tahap berikutnya:
-1. **Fitur Pengunduhan Laporan (Export PDF/Excel)**: Menambahkan tombol di Dasbor Guru untuk mencetak rangkuman investigasi kelompok sebagai lampiran nilai tugas PPG.
-2. **Rubrik Evaluasi Berbasis AI**: Menambahkan fitur agar AI dapat menganalisis apakah hipotesis akhir siswa sudah sesuai dengan UU Hak Cipta Indonesia (UU No. 28 Tahun 2014).
-3. **Timer / Batas Waktu Investigasi**: Menambahkan *countdown timer* selama interogasi agar suasana investigasi terasa lebih menegangkan dan melatih disiplin waktu kelompok.
+### ✅ Tahap 1: Fitur Pengunduhan Laporan (Export PDF & Excel) [SELESAI]
+* **Cetak Dokumen Resmi LKPD (PDF)**: Tombol *"🖨️ Cetak / PDF"* di Dasbor Guru dengan layout kop resmi PPG, tabel 5 bagian berkas investigasi, rubrik evaluasi, dan tanda tangan penilai.
+* **Ekspor Excel (CSV UTF-8 BOM)**:
+  * Tombol *"📊 Unduh Excel"* per kelompok (mengunduh berkas lengkap kelompok aktif).
+  * Tombol *"📊 Ekspor Excel (Semua Tim)"* di sidebar guru untuk merekap seluruh kelompok dalam satu kelas sekaligus.
+
+### 🔜 Rencana Tahap Selanjutnya:
+1. **Tahap 2: Rubrik Evaluasi Berbasis AI**: Menambahkan fitur agar AI dapat menganalisis dan memberikan feedback otomatis apakah bukti C4 dan solusi C5 siswa sudah tepat sasaran sesuai UU Hak Cipta Indonesia (UU No. 28 Tahun 2014).
+2. **Tahap 3: Timer / Batas Waktu Investigasi**: Menambahkan *countdown timer* selama interogasi agar suasana investigasi terasa lebih menantang dan melatih manajemen waktu siswa.
 

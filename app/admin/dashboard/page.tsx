@@ -34,6 +34,36 @@ type KelasItem = {
   nama_kelas: string;
 };
 
+const daftarKasusMap: Record<number, string> = {
+  1: "Pembajakan Game 'CyberQuest'",
+  2: "Plagiarisme Desain Maskot",
+  3: "Pencurian Konten Video (Re-uploader)"
+};
+
+const parseBukti = (raw: string) => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { p1: raw, p2: "", p3: "" };
+  }
+};
+
+const parseAnalisis = (raw: string) => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { tindakan: raw, jenis: "", kerugian: "" };
+  }
+};
+
+const parseSolusi = (raw: string) => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { solusi: raw, aturan: "", refleksi: "" };
+  }
+};
+
 export default function AdminDashboard() {
   const [chats, setChats] = useState<ChatRecord[]>([]);
   const [lkpdList, setLkpdList] = useState<LkpdReport[]>([]);
@@ -178,9 +208,19 @@ export default function AdminDashboard() {
   const getGroupMetadata = (k: number) => {
     const lkpd = filteredLkpd.find((l) => l.kelompok === k);
     const chat = filteredChats.find((c) => c.kelompok === k);
+
+    let namaAnggota = chat?.nama_anggota || "";
+    if (!namaAnggota && lkpd?.solusi_rekomendasi) {
+      try {
+        const s = JSON.parse(lkpd.solusi_rekomendasi);
+        if (s.nama_anggota) namaAnggota = s.nama_anggota;
+      } catch {}
+    }
+    if (!namaAnggota) namaAnggota = "Belum ada nama anggota";
+
     return {
-      kelas: lkpd?.kelas || chat?.kelas || selectedKelasFilter !== "ALL" ? selectedKelasFilter : "9",
-      nama_anggota: chat?.nama_anggota || "Belum ada nama",
+      kelas: lkpd?.kelas || chat?.kelas || (selectedKelasFilter !== "ALL" ? selectedKelasFilter : "9"),
+      nama_anggota: namaAnggota,
       kasus_id: lkpd?.kasus_id || chat?.kasus_id || 1,
       bukti_petunjuk: lkpd?.bukti_petunjuk || "",
       analisis_pelanggaran: lkpd?.analisis_pelanggaran || "",
@@ -191,42 +231,145 @@ export default function AdminDashboard() {
     };
   };
 
+  // Handler Cetak / PDF
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Handler Ekspor Rekap LKPD ke Excel (CSV)
+  const exportToCsv = (groupsToExport: number[]) => {
+    if (!groupsToExport || groupsToExport.length === 0) {
+      alert("Tidak ada data kelompok untuk diekspor.");
+      return;
+    }
+
+    const headers = [
+      "No",
+      "Kelas",
+      "Kelompok",
+      "Kasus ID",
+      "Judul Kasus",
+      "Status LKPD",
+      "Susunan Anggota & Peran Tim",
+      "Petunjuk 1 (Pelaku/Tindakan)",
+      "Petunjuk 2 (Aset/Karya)",
+      "Petunjuk 3 (Lisensi/Status Hukum)",
+      "Analisis Pelanggaran (HOTS C4)",
+      "Jenis HAKI/Lisensi yang Dilanggar",
+      "Pihak Dirugikan & Dampak",
+      "Solusi Adil Korban (HOTS C5)",
+      "Aturan Etis Mitigasi",
+      "Jurnal Refleksi Diri",
+      "Terakhir Diperbarui"
+    ];
+
+    const rows = groupsToExport.map((k, index) => {
+      const meta = getGroupMetadata(k);
+      const b = parseBukti(meta.bukti_petunjuk);
+      const a = parseAnalisis(meta.analisis_pelanggaran);
+      const s = parseSolusi(meta.solusi_rekomendasi);
+
+      return [
+        index + 1,
+        meta.kelas,
+        `Kelompok ${k}`,
+        meta.kasus_id,
+        daftarKasusMap[meta.kasus_id] || `Kasus #${meta.kasus_id}`,
+        meta.is_submitted ? "FINAL TERKIRIM" : "DRAFT",
+        meta.nama_anggota,
+        b.p1,
+        b.p2,
+        b.p3,
+        a.tindakan,
+        a.jenis,
+        a.kerugian,
+        s.solusi,
+        s.aturan,
+        s.refleksi,
+        meta.updated_at ? new Date(meta.updated_at).toLocaleString("id-ID") : "-"
+      ].map((val) => `"${String(val || "").replace(/"/g, '""')}"`).join(",");
+    });
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const prefix = groupsToExport.length === 1 ? `Kelompok_${groupsToExport[0]}` : (selectedKelasFilter === "ALL" ? "Semua_Kelas" : `Kelas_${selectedKelasFilter}`);
+    const namaFile = `Rekap_LKPD_Detektif_HAKI_${prefix}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.setAttribute("href", url);
+    link.setAttribute("download", namaFile);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const selectedGroupData = selectedKelompok ? getGroupMetadata(selectedKelompok) : null;
 
   return (
-    <div className="h-screen md:h-[100dvh] bg-slate-100 flex flex-col md:flex-row overflow-hidden">
-      {/* Sidebar - Daftar Kelompok & Filter Kelas (Scrollbar Terpisah) */}
-      <div className="w-full md:w-80 lg:w-96 bg-white border-r border-slate-200 flex flex-col shrink-0 max-h-[42vh] md:max-h-none md:h-full overflow-hidden">
-        
-        {/* Header Dasbor Guru */}
-        <div className="p-4 border-b border-slate-200 bg-slate-900 text-white shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-              <h1 className="text-base font-bold">Dasbor Guru</h1>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button 
-                onClick={fetchData} 
-                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-1 font-medium"
-                title="Refresh Data"
-              >
-                <span>🔄</span> Refresh
-              </button>
-            </div>
-          </div>
+    <>
+      {/* STYLE KHUSUS UNTUK CETAK PDF */}
+      <style>{`
+        @media print {
+          body {
+            background-color: white !important;
+            color: black !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .print-only {
+            display: block !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 12mm 15mm 12mm 15mm;
+          }
+        }
+      `}</style>
 
-          {/* Filter Kelas & Tombol Tambah Kelas */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center text-[11px] text-slate-400 font-medium">
-              <span>Filter Sesi Kelas:</span>
-              <button
-                onClick={() => setShowKelasModal(true)}
-                className="text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1"
-              >
-                <span>➕</span> Generate Kelas
-              </button>
+      {/* DASHBOARD UTAMA (DISEMBUNYIKAN SAAT CETAK / PRINT) */}
+      <div className="no-print print:hidden h-screen md:h-[100dvh] bg-slate-100 flex flex-col md:flex-row overflow-hidden">
+        {/* Sidebar - Daftar Kelompok & Filter Kelas (Scrollbar Terpisah) */}
+        <div className="w-full md:w-80 lg:w-96 bg-white border-r border-slate-200 flex flex-col shrink-0 max-h-[42vh] md:max-h-none md:h-full overflow-hidden">
+          
+          {/* Header Dasbor Guru */}
+          <div className="p-4 border-b border-slate-200 bg-slate-900 text-white shrink-0">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+                <h1 className="text-base font-bold">Dasbor Guru</h1>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button 
+                  onClick={fetchData} 
+                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-1 font-medium cursor-pointer"
+                  title="Refresh Data"
+                >
+                  <span>🔄</span> Refresh
+                </button>
+              </div>
             </div>
+
+            {/* Filter Kelas & Tombol Tambah Kelas & Ekspor Rekap */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-[11px] text-slate-400 font-medium">
+                <span>Filter Sesi Kelas:</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => exportToCsv(allKelompokKeys)}
+                    className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
+                    title="Ekspor seluruh rekap LKPD kelas ini ke file Excel (CSV)"
+                  >
+                    <span>📊</span> Ekspor Excel
+                  </button>
+                  <button
+                    onClick={() => setShowKelasModal(true)}
+                    className="text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>➕</span> Buat Kelas
+                  </button>
+                </div>
+              </div>
             <select
               value={selectedKelasFilter}
               onChange={(e) => {
@@ -403,54 +546,52 @@ export default function AdminDashboard() {
               
               {/* TAB 1: LAPORAN LKPD DIGITAL (lkpd_reports) */}
               {activeTab === "lkpd" && (() => {
-                const parseBukti = (raw: string) => {
-                  try {
-                    return JSON.parse(raw);
-                  } catch {
-                    return { p1: raw, p2: "", p3: "" };
-                  }
-                };
-                const parseAnalisis = (raw: string) => {
-                  try {
-                    return JSON.parse(raw);
-                  } catch {
-                    return { tindakan: raw, jenis: "", kerugian: "" };
-                  }
-                };
-                const parseSolusi = (raw: string) => {
-                  try {
-                    return JSON.parse(raw);
-                  } catch {
-                    return { solusi: raw, aturan: "", refleksi: "" };
-                  }
-                };
-
                 const bukti = parseBukti(selectedGroupData.bukti_petunjuk);
                 const analisis = parseAnalisis(selectedGroupData.analisis_pelanggaran);
                 const solusi = parseSolusi(selectedGroupData.solusi_rekomendasi);
 
                 return (
                   <div className="space-y-5 max-w-4xl mx-auto">
-                    <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                          <span>📋</span> Berkas Investigasi Kelompok {selectedKelompok}
-                        </h3>
-                        {selectedGroupData.is_submitted ? (
-                          <span className="text-xs bg-emerald-600 text-white font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                            <span>✓</span> Final Terkirim
-                          </span>
-                        ) : (
-                          <span className="text-xs bg-amber-500 text-white font-bold px-2.5 py-0.5 rounded-full">
-                            Draft (Belum Submit)
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                            <span>📋</span> Berkas Investigasi Kelompok {selectedKelompok}
+                          </h3>
+                          {selectedGroupData.is_submitted ? (
+                            <span className="text-xs bg-emerald-600 text-white font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                              <span>✓</span> Final Terkirim
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-amber-500 text-white font-bold px-2.5 py-0.5 rounded-full">
+                              Draft (Belum Submit)
+                            </span>
+                          )}
+                        </div>
+                        {selectedGroupData.updated_at && (
+                          <span className="text-xs text-slate-500 block mt-0.5">
+                            Update Terakhir: {new Date(selectedGroupData.updated_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
                           </span>
                         )}
                       </div>
-                      {selectedGroupData.updated_at && (
-                        <span className="text-xs text-slate-500">
-                          Update Terakhir: {new Date(selectedGroupData.updated_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
-                        </span>
-                      )}
+
+                      {/* Tombol Aksi: Cetak PDF & Ekspor Excel */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={handlePrint}
+                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          title="Cetak atau Simpan sebagai PDF (Lembar Resmi Tugas PPG)"
+                        >
+                          <span>🖨️</span> Cetak / PDF
+                        </button>
+                        <button
+                          onClick={() => exportToCsv([selectedKelompok])}
+                          className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          title="Unduh data LKPD kelompok ini ke format Excel / CSV"
+                        >
+                          <span>📊</span> Unduh Excel
+                        </button>
+                      </div>
                     </div>
 
                     {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
@@ -720,6 +861,164 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+
+      {/* DOKUMEN RESMI UNTUK CETAK PDF (Hanya Tampil Saat Print / PDF) */}
+      {selectedGroupData && (
+        <div id="printable-area" className="hidden print-only p-4 bg-white text-black font-sans leading-normal">
+          {/* KOP RESMI LAPORAN LKPD PPG */}
+          <div className="border-b-2 border-black pb-2 mb-3 text-center">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-700">
+              PROGRAM PENDIDIKAN PROFESI GURU (PPG) • KARYA INOVASI PEMBELAJARAN
+            </h3>
+            <h1 className="text-base font-extrabold uppercase tracking-wide text-black mt-0.5">
+              LEMBAR KERJA PESERTA DIDIK (LKPD) DIGITAL DETEKTIF HAKI
+            </h1>
+            <p className="text-[10px] text-gray-600 mt-0.5">
+              Topik: Hak Kekayaan Intelektual, Hak Cipta, Plagiarisme Digital, dan Etika AI • Model Problem-Based Learning
+            </p>
+          </div>
+
+          {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
+          <div className="border border-black rounded p-3 mb-2.5 text-[11px]">
+            <div className="flex justify-between items-center border-b border-gray-300 pb-1 mb-1.5 font-bold uppercase text-[10px]">
+              <span>BAGIAN I: IDENTITAS TIM DETEKTIF</span>
+              <span>(5–6 Anak / Kelompok)</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mb-2 bg-gray-50 p-2 border border-gray-200 rounded text-[10px]">
+              <div><span className="text-gray-500 block">Kelas:</span> <strong className="text-black text-[11px]">{selectedGroupData.kelas}</strong></div>
+              <div><span className="text-gray-500 block">Nomor Kelompok:</span> <strong className="text-black text-[11px]">Kelompok {selectedKelompok}</strong></div>
+              <div><span className="text-gray-500 block">Kasus yang Diteliti:</span> <strong className="text-black text-[11px]">Kasus #{selectedGroupData.kasus_id} ({daftarKasusMap[selectedGroupData.kasus_id] || "Studi Kasus HAKI"})</strong></div>
+            </div>
+            <div>
+              <span className="font-semibold block mb-1 text-[10px] text-gray-700">Nama Anggota Tim & Pembagian Peran:</span>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 pl-2 text-[10px]">
+                {selectedGroupData.nama_anggota.split(", ").map((item, idx) => (
+                  <p key={idx}>• {item}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG) */}
+          <div className="border border-black rounded p-3 mb-2.5 text-[11px]">
+            <div className="border-b border-gray-300 pb-1 mb-1.5 font-bold uppercase text-[10px]">
+              BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG FROM AI)
+            </div>
+            {(() => {
+              const bukti = parseBukti(selectedGroupData.bukti_petunjuk);
+              return (
+                <div className="space-y-1.5 text-[10px]">
+                  <div>
+                    <strong className="block text-gray-800">1. Petunjuk #1 (Mengenai Pelaku / Tindakan yang Dilakukan):</strong>
+                    <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap">{bukti.p1 || "-"}</p>
+                  </div>
+                  <div>
+                    <strong className="block text-gray-800">2. Petunjuk #2 (Mengenai Aset / Karya yang Dirugikan):</strong>
+                    <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap">{bukti.p2 || "-"}</p>
+                  </div>
+                  <div>
+                    <strong className="block text-gray-800">3. Petunjuk #3 (Mengenai Lisensi / Status Hukum Karya):</strong>
+                    <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap">{bukti.p3 || "-"}</p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4) */}
+          <div className="border border-black rounded p-3 mb-2.5 text-[11px]">
+            <div className="border-b border-gray-300 pb-1 mb-1.5 font-bold uppercase text-[10px]">
+              BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4)
+            </div>
+            {(() => {
+              const analisis = parseAnalisis(selectedGroupData.analisis_pelanggaran);
+              return (
+                <div className="space-y-1.5 text-[10px]">
+                  <div>
+                    <strong className="block text-gray-800">1. Tindakan Spesifik Pelanggaran Hukum / Etika Digital:</strong>
+                    <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap">{analisis.tindakan || "-"}</p>
+                  </div>
+                  <div>
+                    <strong className="block text-gray-800">2. Jenis Hak Kekayaan Intelektual atau Lisensi yang Dilanggar:</strong>
+                    <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap">{analisis.jenis || "-"}</p>
+                  </div>
+                  <div>
+                    <strong className="block text-gray-800">3. Pihak yang Paling Dirugikan dan Dampak Kerugiannya (Moral / Ekonomi):</strong>
+                    <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap">{analisis.kerugian || "-"}</p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI (HOTS - C5) */}
+          <div className="border border-black rounded p-3 mb-2.5 text-[11px]">
+            <div className="border-b border-gray-300 pb-1 mb-1.5 font-bold uppercase text-[10px]">
+              BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI KASUS (HOTS - C5)
+            </div>
+            {(() => {
+              const solusi = parseSolusi(selectedGroupData.solusi_rekomendasi);
+              return (
+                <div className="space-y-1.5 text-[10px]">
+                  <div>
+                    <strong className="block text-gray-800">1. Langkah Penyelesaian Adil untuk Korban Saat Ini:</strong>
+                    <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap">{solusi.solusi || "-"}</p>
+                  </div>
+                  <div>
+                    <strong className="block text-gray-800">2. Aturan Etis Masa Depan agar Terhindar dari Pelanggaran HAKI:</strong>
+                    <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap">{solusi.aturan || "-"}</p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* BAGIAN V: JURNAL REFLEKSI DIRI */}
+          <div className="border border-black rounded p-3 mb-2.5 text-[11px]">
+            <div className="border-b border-gray-300 pb-1 mb-1.5 font-bold uppercase text-[10px]">
+              BAGIAN V: JURNAL REFLEKSI DIRI
+            </div>
+            {(() => {
+              const solusi = parseSolusi(selectedGroupData.solusi_rekomendasi);
+              return (
+                <div className="text-[10px]">
+                  <strong className="block text-gray-800">• Hal paling berharga yang saya pelajari hari ini tentang Hak Cipta:</strong>
+                  <p className="p-1.5 border border-gray-200 rounded bg-gray-50 min-h-[26px] whitespace-pre-wrap mt-0.5">{solusi.refleksi || "-"}</p>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* RUBRIK PENILAIAN & PENGESAHAN GURU PEMBIMBING */}
+          <div className="border-2 border-black rounded p-3 text-[10px]">
+            <div className="font-bold uppercase text-[10px] border-b border-black pb-1 mb-1.5 flex justify-between items-center">
+              <span>LEMBAR PENILAIAN & EVALUASI GURU PEMBIMBING (PPG)</span>
+              <span>NILAI AKHIR: [ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / 100 ]</span>
+            </div>
+            <div className="mb-3">
+              <span className="font-semibold block text-gray-600 mb-0.5">Catatan Evaluasi / Umpan Balik Guru:</span>
+              <div className="border-b border-dotted border-gray-400 h-4"></div>
+              <div className="border-b border-dotted border-gray-400 h-4"></div>
+            </div>
+            <div className="grid grid-cols-2 text-center pt-1">
+              <div>
+                <p className="text-gray-600">Mengetahui,</p>
+                <p className="font-bold">Ketua Tim Detektif</p>
+                <div className="h-10"></div>
+                <p className="font-bold underline">(......................................................)</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Guru Pembimbing / Penilai</p>
+                <p className="font-bold">Mahasiswa PPG</p>
+                <div className="h-10"></div>
+                <p className="font-bold underline">(......................................................)</p>
+                <p className="text-[9px] text-gray-600">NIP / NIM: .......................................</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

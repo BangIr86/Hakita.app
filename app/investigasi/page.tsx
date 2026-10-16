@@ -225,7 +225,8 @@ export default function InvestigasiPage() {
     const payloadSolusi = JSON.stringify({
       solusi: solusiAdil,
       aturan: aturanEtis,
-      refleksi: refleksiDiri
+      refleksi: refleksiDiri,
+      nama_anggota: getGabunganNamaAnggota()
     });
 
     try {
