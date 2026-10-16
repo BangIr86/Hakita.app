@@ -62,7 +62,13 @@ Prompt sistem (disetel di `app/api/chat/route.ts`) dirancang dengan aturan pedag
 2. **Pemilihan Kelompok (`/investigasi` - Layar 1)**:
    * Menampilkan kartu Kelompok 1 sampai 6. Siswa mengklik kelompok mereka.
 3. **Form Registrasi Tim (`/investigasi` - Layar 2 / Bagian I LKPD)**:
-   * Siswa membagi peran tim: Interregator AI, Pencatat Bukti, Analis HAKI, dan Anggota 4 (Solusi & Mitigasi).
+   * Siswa membagi 6 peran detektif (5–6 anak/kelompok):
+     1. Interregator Chat AI
+     2. Pencatat Bukti 1
+     3. Pencatat Bukti 2
+     4. Analis HAKI 1
+     5. Analis HAKI 2
+     6. Juru Bicara Presentasi (opsional jika 5 anak).
 4. **Ruang Investigasi Dual Layout (`/investigasi` - Layar 3)**:
    * **Panel Kiri (Interogasi AI)**: Chat interogasi real-time dengan Saksi Mata Digital (AI) untuk menggali bukti dan kronologi pelanggaran.
    * **Panel Kanan (Berkas Investigasi LKPD)**: Terdiri dari 5 bagian:

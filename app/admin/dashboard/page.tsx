@@ -455,9 +455,14 @@ export default function AdminDashboard() {
 
                     {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">I</span>
-                        <h4 className="font-bold text-slate-800 text-sm">IDENTITAS TIM DETEKTIF</h4>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">I</span>
+                          <h4 className="font-bold text-slate-800 text-sm">IDENTITAS TIM DETEKTIF</h4>
+                        </div>
+                        <span className="text-xs bg-blue-50 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full border border-blue-200">
+                          5–6 Anak/Kelompok
+                        </span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl text-xs text-slate-700">
                         <div><strong className="text-slate-500 block text-[11px]">Kelas:</strong> {selectedGroupData.kelas}</div>
@@ -465,10 +470,16 @@ export default function AdminDashboard() {
                         <div><strong className="text-slate-500 block text-[11px]">Kasus:</strong> Kasus #{selectedGroupData.kasus_id}</div>
                       </div>
                       <div>
-                        <strong className="text-slate-500 block text-xs mb-1">Susunan Anggota Tim:</strong>
-                        <p className="text-xs text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium">
-                          {selectedGroupData.nama_anggota || "Belum ada nama anggota"}
-                        </p>
+                        <strong className="text-slate-500 block text-xs mb-1.5">Nama Anggota & Peran:</strong>
+                        <div className="text-xs text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium space-y-1">
+                          {selectedGroupData.nama_anggota ? (
+                            selectedGroupData.nama_anggota.split(", ").map((item, idx) => (
+                              <p key={idx}>{item}</p>
+                            ))
+                          ) : (
+                            <p className="text-slate-400 italic">Belum ada nama anggota</p>
+                          )}
+                        </div>
                       </div>
                     </div>
 

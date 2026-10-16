@@ -38,11 +38,13 @@ export default function InvestigasiPage() {
   const [kelompokAktif, setKelompokAktif] = useState<number | null>(null);
   const [isIdentitasLengkap, setIsIdentitasLengkap] = useState(false);
 
-  // Bagian I: Anggota Tim & Peran
+  // Bagian I: Anggota Tim & Peran (5–6 Anak/Kelompok)
   const [anggotaInterregator, setAnggotaInterregator] = useState("");
-  const [anggotaPencatat, setAnggotaPencatat] = useState("");
-  const [anggotaAnalis, setAnggotaAnalis] = useState("");
-  const [anggotaLain, setAnggotaLain] = useState("");
+  const [anggotaPencatat1, setAnggotaPencatat1] = useState("");
+  const [anggotaPencatat2, setAnggotaPencatat2] = useState("");
+  const [anggotaAnalis1, setAnggotaAnalis1] = useState("");
+  const [anggotaAnalis2, setAnggotaAnalis2] = useState("");
+  const [anggotaJuruBicara, setAnggotaJuruBicara] = useState("");
 
   // Kasus Aktif & Chat
   const [kasusAktif, setKasusAktif] = useState(daftarKasus[0]);
@@ -122,13 +124,15 @@ export default function InvestigasiPage() {
     }
   };
 
-  // String nama anggota gabungan
+  // String nama anggota gabungan (5–6 Anak/Kelompok)
   const getGabunganNamaAnggota = () => {
     const list: string[] = [];
-    if (anggotaInterregator.trim()) list.push(`1. ${anggotaInterregator.trim()} (Interregator)`);
-    if (anggotaPencatat.trim()) list.push(`2. ${anggotaPencatat.trim()} (Pencatat Bukti)`);
-    if (anggotaAnalis.trim()) list.push(`3. ${anggotaAnalis.trim()} (Analis HAKI)`);
-    if (anggotaLain.trim()) list.push(`4. ${anggotaLain.trim()}`);
+    if (anggotaInterregator.trim()) list.push(`1. ${anggotaInterregator.trim()} (Interregator Chat AI)`);
+    if (anggotaPencatat1.trim()) list.push(`2. ${anggotaPencatat1.trim()} (Pencatat Bukti 1)`);
+    if (anggotaPencatat2.trim()) list.push(`3. ${anggotaPencatat2.trim()} (Pencatat Bukti 2)`);
+    if (anggotaAnalis1.trim()) list.push(`4. ${anggotaAnalis1.trim()} (Analis HAKI 1)`);
+    if (anggotaAnalis2.trim()) list.push(`5. ${anggotaAnalis2.trim()} (Analis HAKI 2)`);
+    if (anggotaJuruBicara.trim()) list.push(`6. ${anggotaJuruBicara.trim()} (Juru Bicara Presentasi)`);
     return list.join(", ");
   };
 
@@ -413,14 +417,14 @@ export default function InvestigasiPage() {
           <span>←</span> Kembali Pilih Kelompok
         </button>
 
-        <div className="bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-700 max-w-lg w-full">
-          <div className="text-center mb-6">
-            <div className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
-              Kelas {namaKelas} • Kelompok {kelompokAktif}
+        <div className="bg-slate-800 p-6 md:p-8 rounded-3xl shadow-xl border border-slate-700 max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-width:thin]">
+          <div className="text-center mb-5">
+            <div className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-2 uppercase tracking-wider">
+              Kelas {namaKelas} • Kelompok {kelompokAktif} (5–6 Anak/Kelompok)
             </div>
-            <div className="text-5xl mb-2">👥</div>
-            <h2 className="text-2xl font-bold text-white mb-1">BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
-            <p className="text-slate-400 text-xs">Tentukan pembagian peran anggota tim Anda sebelum memulai investigasi.</p>
+            <div className="text-4xl mb-1.5">👥</div>
+            <h2 className="text-xl md:text-2xl font-bold text-white mb-1">BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
+            <p className="text-slate-400 text-xs">Masukkan nama anggota tim sesuai peran detektif masing-masing.</p>
           </div>
           
           <form onSubmit={(e) => {
@@ -428,63 +432,89 @@ export default function InvestigasiPage() {
             if (anggotaInterregator.trim()) {
               setIsIdentitasLengkap(true);
             }
-          }} className="space-y-3.5">
+          }} className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-blue-300 mb-1">
-                1. Anggota 1 (Interregator AI) <span className="text-red-400">*</span>
+                1. Anggota 1 (Interregator Chat AI) <span className="text-red-400">*</span>
               </label>
               <input 
                 type="text"
                 required
                 value={anggotaInterregator}
                 onChange={(e) => setAnggotaInterregator(e.target.value)}
-                placeholder="Nama siswa yang bertugas chat dengan AI"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
+                placeholder="Nama siswa yang bertugas chat interogasi dengan AI"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-emerald-300 mb-1">
-                2. Anggota 2 (Pencatat Bukti / Clues)
+                2. Anggota 2 (Pencatat Bukti 1)
               </label>
               <input 
                 type="text"
-                value={anggotaPencatat}
-                onChange={(e) => setAnggotaPencatat(e.target.value)}
-                placeholder="Nama siswa pencatat petunjuk kunci"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500"
+                value={anggotaPencatat1}
+                onChange={(e) => setAnggotaPencatat1(e.target.value)}
+                placeholder="Nama siswa pencatat petunjuk kunci 1"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-teal-300 mb-1">
+                3. Anggota 3 (Pencatat Bukti 2)
+              </label>
+              <input 
+                type="text"
+                value={anggotaPencatat2}
+                onChange={(e) => setAnggotaPencatat2(e.target.value)}
+                placeholder="Nama siswa pencatat petunjuk kunci 2"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-teal-500"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-purple-300 mb-1">
-                3. Anggota 3 (Analis HAKI)
+                4. Anggota 4 (Analis HAKI 1)
               </label>
               <input 
                 type="text"
-                value={anggotaAnalis}
-                onChange={(e) => setAnggotaAnalis(e.target.value)}
-                placeholder="Nama siswa analis pelanggaran hukum/etika"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
+                value={anggotaAnalis1}
+                onChange={(e) => setAnggotaAnalis1(e.target.value)}
+                placeholder="Nama siswa analis pelanggaran hukum/etika 1"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-indigo-300 mb-1">
+                5. Anggota 5 (Analis HAKI 2)
+              </label>
+              <input 
+                type="text"
+                value={anggotaAnalis2}
+                onChange={(e) => setAnggotaAnalis2(e.target.value)}
+                placeholder="Nama siswa analis pelanggaran hukum/etika 2"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-amber-300 mb-1">
-                4. Anggota 4 (Solusi & Mitigasi / Opsional)
+                6. Anggota 6 (Juru Bicara Presentasi / Opsional jika 5 anak)
               </label>
               <input 
                 type="text"
-                value={anggotaLain}
-                onChange={(e) => setAnggotaLain(e.target.value)}
-                placeholder="Nama anggota tim lainnya"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"
+                value={anggotaJuruBicara}
+                onChange={(e) => setAnggotaJuruBicara(e.target.value)}
+                placeholder="Nama siswa juru bicara saat presentasi kelas"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-amber-500"
               />
             </div>
 
             <button 
               type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg mt-4 text-sm flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg mt-3 text-sm flex items-center justify-center gap-2 cursor-pointer"
             >
               Mulai Investigasi & Buka Berkas 🔍
             </button>
@@ -727,9 +757,14 @@ export default function InvestigasiPage() {
 
             {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3">
-              <h3 className="font-bold text-xs text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                <span>🏷️</span> BAGIAN I: IDENTITAS TIM DETEKTIF
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-xs text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🏷️</span> BAGIAN I: IDENTITAS TIM DETEKTIF
+                </h3>
+                <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
+                  5–6 Anak/Kelompok
+                </span>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-950 p-3 rounded-xl border border-slate-800/80">
                 <div>
                   <span className="text-[10px] text-slate-400 block">Kelas:</span>
@@ -746,12 +781,14 @@ export default function InvestigasiPage() {
               </div>
 
               <div>
-                <span className="text-[11px] font-semibold text-slate-300 block mb-1">Nama Anggota Tim & Peran:</span>
-                <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-                  <p>1. <strong className="text-white">{anggotaInterregator || "(Belum diisi)"}</strong> <span className="text-blue-400 text-[11px]">(Interregator)</span></p>
-                  <p>2. <strong className="text-white">{anggotaPencatat || "(Belum diisi)"}</strong> <span className="text-emerald-400 text-[11px]">(Pencatat Bukti)</span></p>
-                  <p>3. <strong className="text-white">{anggotaAnalis || "(Belum diisi)"}</strong> <span className="text-purple-400 text-[11px]">(Analis HAKI)</span></p>
-                  {anggotaLain && <p>4. <strong className="text-white">{anggotaLain}</strong> <span className="text-amber-400 text-[11px]">(Mitigasi & Solusi)</span></p>}
+                <span className="text-[11px] font-semibold text-slate-300 block mb-1.5">Nama Anggota & Peran:</span>
+                <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                  <p>1. <strong className="text-white">{anggotaInterregator || "(Belum diisi)"}</strong> <span className="text-blue-400 text-[11px] font-medium">(Interregator Chat AI)</span></p>
+                  <p>2. <strong className="text-white">{anggotaPencatat1 || "(Belum diisi)"}</strong> <span className="text-emerald-400 text-[11px] font-medium">(Pencatat Bukti 1)</span></p>
+                  <p>3. <strong className="text-white">{anggotaPencatat2 || "(Belum diisi)"}</strong> <span className="text-teal-400 text-[11px] font-medium">(Pencatat Bukti 2)</span></p>
+                  <p>4. <strong className="text-white">{anggotaAnalis1 || "(Belum diisi)"}</strong> <span className="text-purple-400 text-[11px] font-medium">(Analis HAKI 1)</span></p>
+                  <p>5. <strong className="text-white">{anggotaAnalis2 || "(Belum diisi)"}</strong> <span className="text-indigo-400 text-[11px] font-medium">(Analis HAKI 2)</span></p>
+                  <p>6. <strong className="text-white">{anggotaJuruBicara || "(Belum diisi / Opsional jika 5 anak)"}</strong> <span className="text-amber-400 text-[11px] font-medium">(Juru Bicara Presentasi)</span></p>
                 </div>
               </div>
             </div>
