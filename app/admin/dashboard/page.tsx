@@ -49,7 +49,9 @@ type LkpdReport = {
 type KelasItem = {
   kode_kelas: string;
   nama_kelas: string;
+  durasi_menit?: number;
 };
+
 
 const daftarKasusMap: Record<number, string> = {
   1: "Pembajakan Game 'CyberQuest'",
@@ -114,6 +116,7 @@ export default function AdminDashboard() {
   const [showKelasModal, setShowKelasModal] = useState(false);
   const [inputNamaKelasBaru, setInputNamaKelasBaru] = useState("");
   const [inputKodeKelasBaru, setInputKodeKelasBaru] = useState("");
+  const [inputDurasiMenit, setInputDurasiMenit] = useState<number>(30);
   const [isSavingKelas, setIsSavingKelas] = useState(false);
   const [pesanSuksesKelas, setPesanSuksesKelas] = useState("");
 
@@ -148,11 +151,15 @@ export default function AdminDashboard() {
       // 3. Ambil daftar sesi kelas aktif dari tabel kelas_sesi
       const { data: sesiData, error: sesiError } = await supabase
         .from("kelas_sesi")
-        .select("kode_kelas, nama_kelas")
+        .select("*")
         .order("created_at", { ascending: true });
 
       if (!sesiError && sesiData && sesiData.length > 0) {
-        setKelasList(sesiData);
+        setKelasList(sesiData.map((s: any) => ({
+          kode_kelas: s.kode_kelas,
+          nama_kelas: s.nama_kelas,
+          durasi_menit: s.durasi_menit ? Number(s.durasi_menit) : 30
+        })));
       }
 
     } catch (err: any) {
@@ -183,13 +190,14 @@ export default function AdminDashboard() {
     setInputKodeKelasBaru(`${prefix}-${randomStr}`);
   };
 
-  // Handler Generate Kode Kelas Baru
+  // Handler Generate Kode Kelas Baru dengan Setting Durasi Timer
   const handleSimpanKelasBaru = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputNamaKelasBaru.trim()) return;
 
     const cleanNama = inputNamaKelasBaru.trim().toUpperCase();
     const cleanKode = (inputKodeKelasBaru.trim() || `HAKI-${cleanNama}`).toUpperCase();
+    const durasiNum = Number(inputDurasiMenit) || 30;
 
     setIsSavingKelas(true);
     setPesanSuksesKelas("");
@@ -200,29 +208,38 @@ export default function AdminDashboard() {
           .from("kelas_sesi")
           .insert({
             kode_kelas: cleanKode,
-            nama_kelas: cleanNama
+            nama_kelas: cleanNama,
+            durasi_menit: durasiNum
           });
 
         if (insertError) {
-          console.warn("Gagal simpan ke DB kelas_sesi, menambahkan ke state lokal:", insertError);
+          console.warn("Mencoba fallback insert tanpa durasi_menit jika kolom belum ada di DB:", insertError);
+          await supabase
+            .from("kelas_sesi")
+            .insert({
+              kode_kelas: cleanKode,
+              nama_kelas: cleanNama
+            });
         }
       }
 
       // Update state lokal
       setKelasList((prev) => {
         const filtered = prev.filter((k) => k.kode_kelas !== cleanKode);
-        return [...filtered, { kode_kelas: cleanKode, nama_kelas: cleanNama }];
+        return [...filtered, { kode_kelas: cleanKode, nama_kelas: cleanNama, durasi_menit: durasiNum }];
       });
 
-      setPesanSuksesKelas(`✅ Berhasil membuat kelas ${cleanNama} dengan Kode: ${cleanKode}`);
+      setPesanSuksesKelas(`✅ Berhasil membuat kelas ${cleanNama} (Durasi: ${durasiNum} Menit) dengan Kode: ${cleanKode}`);
       setInputNamaKelasBaru("");
       setInputKodeKelasBaru("");
+      setInputDurasiMenit(30);
     } catch (err) {
       console.error("Error creating class session:", err);
     } finally {
       setIsSavingKelas(false);
     }
   };
+
 
   // Filter chats & lkpd berdasarkan kelas yang dipilih
   const filteredChats = selectedKelasFilter === "ALL" 
@@ -255,8 +272,15 @@ export default function AdminDashboard() {
     }
     if (!namaAnggota) namaAnggota = "Belum ada nama anggota";
 
+    const kelasStr = lkpd?.kelas || chat?.kelas || (selectedKelasFilter !== "ALL" ? selectedKelasFilter : "9");
+    const matchedKelasObj = kelasList.find(
+      (item) => item.nama_kelas.toUpperCase() === kelasStr.toUpperCase() || item.kode_kelas.toUpperCase() === kelasStr.toUpperCase()
+    );
+    const durasiMenit = matchedKelasObj?.durasi_menit || 30;
+
     return {
-      kelas: lkpd?.kelas || chat?.kelas || (selectedKelasFilter !== "ALL" ? selectedKelasFilter : "9"),
+      kelas: kelasStr,
+      durasi_menit: durasiMenit,
       nama_anggota: namaAnggota,
       kasus_id: lkpd?.kasus_id || chat?.kasus_id || 1,
       bukti_petunjuk: lkpd?.bukti_petunjuk || "",
@@ -267,6 +291,7 @@ export default function AdminDashboard() {
       messages: filteredChats.filter((c) => c.kelompok === k)
     };
   };
+
 
   // Handler Cetak / PDF
   const handlePrint = () => {
@@ -681,10 +706,13 @@ export default function AdminDashboard() {
             {/* Header Detail Kelompok Terpilih */}
             <div className="p-4 md:p-5 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h2 className="font-extrabold text-lg text-slate-800">Kelompok {selectedKelompok}</h2>
                   <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-0.5 rounded-full">
                     Kelas {selectedGroupData.kelas}
+                  </span>
+                  <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 font-semibold px-2 py-0.5 rounded-md flex items-center gap-1" title="Batas waktu investigasi kelas ini">
+                    <span>⏱️</span> {selectedGroupData.durasi_menit || 30} Menit
                   </span>
                   <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-md border border-slate-200">
                     Kasus #{selectedGroupData.kasus_id}
@@ -699,6 +727,7 @@ export default function AdminDashboard() {
                     </span>
                   )}
                 </div>
+
                 <p className="text-xs text-slate-500">
                   <span className="font-semibold text-slate-700">Anggota Tim:</span> {selectedGroupData.nama_anggota}
                 </p>
@@ -1396,6 +1425,53 @@ export default function AdminDashboard() {
                 </span>
               </div>
 
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <span>⏱️</span>
+                    <span>Durasi Waktu Investigasi Siswa</span>
+                  </label>
+                  <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                    {inputDurasiMenit} Menit
+                  </span>
+                </div>
+
+                {/* Preset Cepat Durasi Timer */}
+                <div className="grid grid-cols-5 gap-1.5 mb-2">
+                  {[15, 20, 30, 45, 60].map((menit) => (
+                    <button
+                      key={menit}
+                      type="button"
+                      onClick={() => setInputDurasiMenit(menit)}
+                      className={`py-1.5 px-1 rounded-xl text-xs font-bold transition-all border ${
+                        inputDurasiMenit === menit
+                          ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      {menit}m
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={5}
+                    max={180}
+                    required
+                    value={inputDurasiMenit}
+                    onChange={(e) => setInputDurasiMenit(Math.max(1, parseInt(e.target.value) || 0))}
+                    className="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-blue-500"
+                    placeholder="Contoh: 30"
+                  />
+                  <span className="text-xs font-bold text-slate-600 shrink-0">Menit</span>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Timer hitung mundur ini akan aktif di layar investigasi siswa saat mereka menginterogasi saksi dan mengisi LKPD.
+                </span>
+              </div>
+
               {pesanSuksesKelas && (
                 <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-medium">
                   {pesanSuksesKelas}
@@ -1417,13 +1493,19 @@ export default function AdminDashboard() {
                 {kelasList.map((k) => (
                   <div key={k.kode_kelas} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-lg border border-slate-200">
                     <span className="font-semibold text-slate-700">Kelas {k.nama_kelas}</span>
-                    <span className="font-mono font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px]">
-                      {k.kode_kelas}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1" title={`Batas waktu investigasi: ${k.durasi_menit || 30} menit`}>
+                        <span>⏱️</span> {k.durasi_menit || 30}m
+                      </span>
+                      <span className="font-mono font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px]">
+                        {k.kode_kelas}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+
 
             <button
               onClick={() => {

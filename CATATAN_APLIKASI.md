@@ -136,24 +136,29 @@ ALTER TABLE lkpd_reports ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Enable insert and update for anonymous users" 
 ON lkpd_reports FOR ALL USING (true) WITH CHECK (true);
 
--- Tabel Sesi Kelas (Untuk Generate Kode Akses per Kelas)
+-- Tabel Sesi Kelas (Untuk Generate Kode Akses per Kelas & Setting Durasi Timer)
 CREATE TABLE kelas_sesi (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   kode_kelas text UNIQUE NOT NULL,
   nama_kelas text NOT NULL,
+  durasi_menit integer DEFAULT 30, -- Batas waktu investigasi siswa (menit)
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Migrasi jika tabel kelas_sesi sudah ada sebelumnya:
+-- ALTER TABLE kelas_sesi ADD COLUMN IF NOT EXISTS durasi_menit integer DEFAULT 30;
 
 ALTER TABLE kelas_sesi ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Enable all for anonymous users" 
 ON kelas_sesi FOR ALL USING (true) WITH CHECK (true);
 
 -- Data Default (Opsional)
-INSERT INTO kelas_sesi (kode_kelas, nama_kelas) VALUES 
-  ('HAKI-9A', '9A'),
-  ('HAKI-9B', '9B'),
-  ('HAKI-9C', '9C')
+INSERT INTO kelas_sesi (kode_kelas, nama_kelas, durasi_menit) VALUES 
+  ('HAKI-9A', '9A', 30),
+  ('HAKI-9B', '9B', 30),
+  ('HAKI-9C', '9C', 30)
 ON CONFLICT (kode_kelas) DO NOTHING;
+
 ```
 
 ### File Variabel Lingkungan (`.env.local`)
@@ -240,7 +245,28 @@ hakita-app/
   * Dokumen cetak PDF menyertakan bagian resmi evaluasi AI serta otomatis mengisi skor pada kotak pengesahan guru.
   * Rekap Excel memuat 4 kolom tambahan: Skor AI, Predikat AI, Ulasan Hukum UU 28/2014, dan Rekomendasi Umpan Balik.
 
-### 🔜 Rencana Tahap Selanjutnya:
-1. **Tahap 3: Timer / Batas Waktu Investigasi**: Menambahkan *countdown timer* selama interogasi agar suasana investigasi terasa lebih menantang dan melatih manajemen waktu siswa.
+### ✅ Tahap 3: Timer & Batas Waktu Investigasi (Konfigurasi Guru) [SELESAI]
+* **Konfigurasi Timer oleh Guru Saat Pembuatan Kode Kelas (`/admin/dashboard`)**:
+  * Guru dapat menentukan durasi investigasi secara fleksibel (Preset tombol cepat: 15, 20, 30, 45, 60 Menit, atau input angka bebas).
+  * Durasi tersimpan otomatis ke tabel `kelas_sesi.durasi_menit` (dengan fallback otomatis jika kolom database belum dimigrasikan).
+  * Badge durasi tertera di daftar kode kelas aktif dan di header kelompok terpilih di Dasbor Guru.
+* **Countdown Timer Interaktif Siswa (`/investigasi`)**:
+  * Menampilkan informasi batas waktu pada layar Pemilihan Kelompok dan Registrasi Peran.
+  * Timer hitung mundur aktif otomatis saat siswa memasuki ruang investigasi dan interogasi.
+  * **Persistensi Waktu via `localStorage`**: Sisa waktu tidak ter-reset meskipun browser siswa di-refresh atau koneksi terputus.
+  * **Indikator Visual Dinamis**:
+    * ⏱️ *Normal (> 5 menit)*: Tampilan gelap berpadu font digital monospaced.
+    * ⏳ *Warning (≤ 5 menit)*: Indikator amber berkedip (pulsing alert).
+    * 🚨 *Critical (≤ 2 menit)*: Indikator merah intensif berkedip.
+    * 🚨 *Waktu Habis (00:00)*: Tampilan *"WAKTU HABIS"* dengan banner peringatan *sticky* dan pop-up modal pengingat untuk segera mengirimkan berkas final LKPD.
+    * ✅ *Terkirim*: Indikator berubah menjadi hijau dengan status *"SELESAI"*.
+
+---
+
+## 10. KESIMPULAN FITUR UNGGULAN APLIKASI
+Hakita App telah mengintegrasikan siklus Problem-Based Learning (PBL) secara utuh:
+1. **Siswa**: Menjalankan investigasi interaktif dengan Saksi AI, mengisi lembar LKPD digital 5 bagian dalam batas waktu yang ditentukan guru.
+2. **Guru**: Memantau aktivitas interogasi real-time, melihat pengerjaan asli siswa berdampingan dengan evaluasi AI berbasis UU Hak Cipta No. 28/2014 & rubrik HOTS, mencetak berkas resmi PPG ber-kop, dan mengekspor rekap spreadsheet Excel.
+
 
 

@@ -1,9 +1,16 @@
+export type KelasItem = {
+  kode_kelas: string;
+  nama_kelas: string;
+  durasi_menit?: number;
+};
+
 // DAFTAR KELAS & KODE KELAS DEFAULT (Cadangan jika Supabase offline/belum disetup)
-export const DEFAULT_KELAS_LIST = [
-  { kode_kelas: "HAKI-9A", nama_kelas: "9A" },
-  { kode_kelas: "HAKI-9B", nama_kelas: "9B" },
-  { kode_kelas: "HAKI-9C", nama_kelas: "9C" },
+export const DEFAULT_KELAS_LIST: KelasItem[] = [
+  { kode_kelas: "HAKI-9A", nama_kelas: "9A", durasi_menit: 30 },
+  { kode_kelas: "HAKI-9B", nama_kelas: "9B", durasi_menit: 30 },
+  { kode_kelas: "HAKI-9C", nama_kelas: "9C", durasi_menit: 30 },
 ];
+
 
 // DAFTAR STUDI KASUS DETEKTIF HAKI
 export const DAFTAR_KASUS = [

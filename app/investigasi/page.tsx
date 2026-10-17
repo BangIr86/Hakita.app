@@ -52,18 +52,86 @@ export default function InvestigasiPage() {
   const [refleksiDiri, setRefleksiDiri] = useState("");
   const [evaluasiAi, setEvaluasiAi] = useState<any>(null);
 
+  // Sesi Timer Investigasi (Tahap 3)
+  const [durasiMenit, setDurasiMenit] = useState<number>(30);
+  const [sisaDetik, setSisaDetik] = useState<number>(30 * 60);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+  const [showTimeUpModal, setShowTimeUpModal] = useState<boolean>(false);
+  const [hasAlertedTimeUp, setHasAlertedTimeUp] = useState<boolean>(false);
+
   // Status Form LKPD
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [activeTabMobile, setActiveTabMobile] = useState<"chat" | "lembar">("chat");
   const [showKasusModal, setShowKasusModal] = useState(false);
 
+  // Format Detik ke MM:SS
+  const formatWaktu = (totalDetik: number) => {
+    const m = Math.floor(Math.max(0, totalDetik) / 60);
+    const s = Math.max(0, totalDetik) % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // Inisialisasi dan Sinkronisasi Timer Investigasi
+  useEffect(() => {
+    if (!isIdentitasLengkap || !kodeKelasAktif || !kelompokAktif) return;
+
+    const timerStorageKey = `hakita_timer_${kodeKelasAktif}_kelompok_${kelompokAktif}`;
+    const storedStart = localStorage.getItem(timerStorageKey);
+    let startTime = storedStart ? parseInt(storedStart, 10) : 0;
+
+    if (!startTime || isNaN(startTime)) {
+      startTime = Date.now();
+      localStorage.setItem(timerStorageKey, startTime.toString());
+    }
+
+    const totalDetik = durasiMenit * 60;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const remaining = Math.max(0, totalDetik - elapsed);
+
+    setSisaDetik(remaining);
+    setIsTimerRunning(true);
+
+    if (remaining <= 0 && !hasAlertedTimeUp) {
+      setShowTimeUpModal(true);
+      setHasAlertedTimeUp(true);
+    }
+  }, [isIdentitasLengkap, kodeKelasAktif, kelompokAktif, durasiMenit, hasAlertedTimeUp]);
+
+  // Loop Interval Timer (Berjalan Tiap 1 Detik)
+  useEffect(() => {
+    if (!isTimerRunning || isSubmitted || !kodeKelasAktif || !kelompokAktif) return;
+
+    const timerStorageKey = `hakita_timer_${kodeKelasAktif}_kelompok_${kelompokAktif}`;
+    const interval = setInterval(() => {
+      const storedStart = localStorage.getItem(timerStorageKey);
+      if (!storedStart) return;
+
+      const startTime = parseInt(storedStart, 10);
+      const totalDetik = durasiMenit * 60;
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, totalDetik - elapsed);
+
+      setSisaDetik(remaining);
+
+      if (remaining <= 0) {
+        if (!hasAlertedTimeUp) {
+          setShowTimeUpModal(true);
+          setHasAlertedTimeUp(true);
+        }
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isTimerRunning, isSubmitted, kodeKelasAktif, kelompokAktif, durasiMenit, hasAlertedTimeUp]);
+
   // Auto-scroll chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [pesan, isLoading]);
 
-  // Validasi Kode Kelas
+  // Validasi Kode Kelas dengan Membaca Durasi Timer Settingan Guru
   const handleVerifikasiKelas = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanKode = kodeKelasInput.trim().toUpperCase();
@@ -74,26 +142,40 @@ export default function InvestigasiPage() {
 
     try {
       let matchedKelas: string | null = null;
+      let matchedDurasi = 30;
+
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
         const { data } = await supabase
           .from("kelas_sesi")
-          .select("kode_kelas, nama_kelas")
+          .select("*")
           .ilike("kode_kelas", cleanKode)
           .maybeSingle();
 
-        if (data) matchedKelas = data.nama_kelas;
+        if (data) {
+          matchedKelas = data.nama_kelas;
+          if (data.durasi_menit) {
+            matchedDurasi = Number(data.durasi_menit);
+          }
+        }
       }
 
       if (!matchedKelas) {
         const fallback = DEFAULT_KELAS_LIST.find(
           (k) => k.kode_kelas.toUpperCase() === cleanKode || k.nama_kelas.toUpperCase() === cleanKode
         );
-        if (fallback) matchedKelas = fallback.nama_kelas;
+        if (fallback) {
+          matchedKelas = fallback.nama_kelas;
+          if (fallback.durasi_menit) {
+            matchedDurasi = fallback.durasi_menit;
+          }
+        }
       }
 
       if (matchedKelas) {
         setNamaKelas(matchedKelas);
         setKodeKelasAktif(cleanKode);
+        setDurasiMenit(matchedDurasi);
+        setSisaDetik(matchedDurasi * 60);
         setErrorKelas("");
       } else {
         setErrorKelas("Kode Kelas tidak ditemukan! Minta kode aktif dari Guru Anda.");
@@ -105,6 +187,7 @@ export default function InvestigasiPage() {
       setIsValidatingKelas(false);
     }
   };
+
 
   // String nama anggota gabungan (5–6 Anak/Kelompok)
   const getGabunganNamaAnggota = () => {
@@ -361,8 +444,12 @@ export default function InvestigasiPage() {
         </button>
 
         <div className="text-center mb-8 mt-12 md:mt-0">
-          <div className="inline-block px-4 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
-            Sesi Kelas: {namaKelas} ({kodeKelasAktif})
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
+            <span>Sesi Kelas: {namaKelas} ({kodeKelasAktif})</span>
+            <span>•</span>
+            <span className="text-amber-400 font-extrabold flex items-center gap-1">
+              <span>⏱️</span> {durasiMenit} Menit
+            </span>
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
             Identifikasi Tim Detektif
@@ -406,13 +493,18 @@ export default function InvestigasiPage() {
 
         <div className="bg-slate-800 p-6 md:p-8 rounded-3xl shadow-xl border border-slate-700 max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-width:thin]">
           <div className="text-center mb-5">
-            <div className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-2 uppercase tracking-wider">
-              Kelas {namaKelas} • Kelompok {kelompokAktif} (5–6 Anak/Kelompok)
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-2 uppercase tracking-wider">
+              <span>Kelas {namaKelas} • Kelompok {kelompokAktif}</span>
+              <span>•</span>
+              <span className="text-amber-400 flex items-center gap-1 font-bold">
+                <span>⏱️</span> {durasiMenit} Menit
+              </span>
             </div>
             <div className="text-4xl mb-1.5">👥</div>
             <h2 className="text-xl md:text-2xl font-bold text-white mb-1">BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
             <p className="text-slate-400 text-xs">Masukkan nama anggota tim sesuai peran detektif masing-masing.</p>
           </div>
+
           
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -592,21 +684,48 @@ export default function InvestigasiPage() {
   return (
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 overflow-hidden">
       {/* Top Navbar */}
-      <header className="h-14 bg-slate-800 border-b border-slate-700 px-4 flex items-center justify-between shrink-0 z-20">
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+      <header className="h-14 bg-slate-800 border-b border-slate-700 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <img src="/logo.png" alt="Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
           <div>
-            <h1 className="text-sm font-bold text-white flex items-center gap-2">
-              BERKAS INVESTIGASI TIM DETEKTIF
-              <span className="hidden sm:inline-block px-2 py-0.5 bg-blue-600/30 text-blue-400 text-[10px] rounded-full border border-blue-500/30 font-mono">
-                {namaKelas} • Kelompok {kelompokAktif}
+            <h1 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 sm:gap-2">
+              <span className="hidden xs:inline">BERKAS INVESTIGASI</span>
+              <span className="xs:hidden">INVESTIGASI</span>
+              <span className="px-2 py-0.5 bg-blue-600/30 text-blue-400 text-[10px] rounded-full border border-blue-500/30 font-mono">
+                {namaKelas} • Kel {kelompokAktif}
               </span>
             </h1>
           </div>
         </div>
 
+        {/* Countdown Timer Badge Interaktif */}
+        <div 
+          className={`px-2.5 sm:px-3 py-1 rounded-xl border flex items-center gap-2 text-xs font-mono font-bold transition-all shadow-sm ${
+            isSubmitted
+              ? "bg-emerald-950/80 border-emerald-500/50 text-emerald-300"
+              : sisaDetik <= 0
+              ? "bg-rose-950 border-rose-500 text-rose-300 animate-pulse ring-1 ring-rose-500"
+              : sisaDetik <= 300
+              ? "bg-amber-950/90 border-amber-500 text-amber-300 animate-pulse"
+              : "bg-slate-900 border-slate-700 text-slate-200"
+          }`} 
+          title={`Batas waktu investigasi kelas: ${durasiMenit} menit (Diatur oleh Guru)`}
+        >
+          <span className="text-sm">
+            {isSubmitted ? "✅" : sisaDetik <= 0 ? "🚨" : sisaDetik <= 300 ? "⏳" : "⏱️"}
+          </span>
+          <div className="flex flex-col text-left leading-none">
+            <span className="text-[9px] uppercase tracking-wider text-slate-400 font-sans font-medium">
+              {isSubmitted ? "Terkirim" : sisaDetik <= 0 ? "Waktu Habis" : "Sisa Waktu"}
+            </span>
+            <span className="text-xs sm:text-sm font-black tracking-wider mt-0.5">
+              {isSubmitted ? "SELESAI" : formatWaktu(sisaDetik)}
+            </span>
+          </div>
+        </div>
+
         {/* Tab Toggle Mobile & Tombol Kasus */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => setShowKasusModal(true)}
             className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-600 flex items-center gap-1 font-semibold"
@@ -619,31 +738,48 @@ export default function InvestigasiPage() {
           <div className="flex lg:hidden bg-slate-900 p-0.5 rounded-lg border border-slate-700 text-xs font-semibold">
             <button
               onClick={() => setActiveTabMobile("chat")}
-              className={`px-3 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-all ${
                 activeTabMobile === "chat" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
-              💬 Interogasi
+              💬 Chat
             </button>
             <button
               onClick={() => setActiveTabMobile("lembar")}
-              className={`px-3 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-all ${
                 activeTabMobile === "lembar" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
-              📝 Lembar LKPD
+              📝 LKPD
             </button>
           </div>
 
           <button
             onClick={() => setKelompokAktif(null)}
-            className="text-xs text-slate-400 hover:text-white px-2 py-1"
+            className="text-xs text-slate-400 hover:text-white px-1.5 py-1"
             title="Ganti Kelompok"
           >
             Keluar
           </button>
         </div>
       </header>
+
+      {/* Sticky Alert Waktu Investigasi Habis */}
+      {sisaDetik <= 0 && !isSubmitted && (
+        <div className="bg-rose-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shrink-0 shadow-md z-10 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-2">
+            <span className="text-base animate-bounce">⏰</span>
+            <span>Waktu Investigasi Telah Habis ({durasiMenit} Menit)! Segera periksa lembar LKPD dan kirimkan berkas final kalian.</span>
+          </div>
+          <button
+            onClick={() => setActiveTabMobile("lembar")}
+            className="px-3 py-1 bg-white text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-black shadow-sm shrink-0"
+          >
+            Buka LKPD & Kirim Final →
+          </button>
+        </div>
+      )}
+
 
       {/* Main Container Dual Layout */}
       <div className="flex-1 flex overflow-hidden">
@@ -1032,6 +1168,40 @@ export default function InvestigasiPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Peringatan Waktu Habis (Tahap 3) */}
+      {showTimeUpModal && !isSubmitted && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-800 border-2 border-rose-500 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl relative">
+            <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-3xl mx-auto mb-3 animate-bounce">
+              ⏰
+            </div>
+            <h3 className="text-xl font-extrabold text-white mb-2">
+              Waktu Investigasi Telah Habis!
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Batas waktu investigasi <strong>{durasiMenit} menit</strong> yang telah diatur oleh Guru untuk sesi kelas ini telah selesai. Semua catatan dan analisis yang Anda ketik telah tersimpan aman.
+            </p>
+            <div className="bg-slate-900 p-3 rounded-2xl border border-slate-700 text-xs text-slate-300 mb-5 text-left space-y-1.5">
+              <p className="font-bold text-amber-400 flex items-center gap-1.5">
+                <span>📢</span> Langkah Selanjutnya:
+              </p>
+              <p>1. Periksa kembali jawaban Anda pada Bagian I hingga V di lembar LKPD.</p>
+              <p>2. Segera klik tombol <strong>"Kirim Final Berkas Investigasi"</strong> agar dapat dievaluasi oleh Guru dan AI Asesor.</p>
+            </div>
+            <button
+              onClick={() => {
+                setShowTimeUpModal(false);
+                setActiveTabMobile("lembar");
+              }}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              Buka Lembar LKPD & Kirim Final Sekarang 🚀
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
