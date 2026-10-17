@@ -261,12 +261,45 @@ hakita-app/
     * 🚨 *Waktu Habis (00:00)*: Tampilan *"WAKTU HABIS"* dengan banner peringatan *sticky* dan pop-up modal pengingat untuk segera mengirimkan berkas final LKPD.
     * ✅ *Terkirim*: Indikator berubah menjadi hijau dengan status *"SELESAI"*.
 
+### ✅ Tahap 4: Kolaborasi Multi-Device ("Multi-Device Room") [SELESAI]
+* **Skenario Riil Pembelajaran Kolaboratif di Kelas**:
+  * Dirancang spesifik untuk pembagian kerja nyata di kelas:
+    * **1 Laptop**: Digunakan oleh siswa peran **Interregator** untuk chat interaktif menggali petunjuk dari Saksi Mata Digital (AI).
+    * **1 Smartphone**: Digunakan oleh siswa peran **Pencatat Bukti (1 & 2)** untuk mencatat petunjuk kunci (Evidence Log) pada Bagian II LKPD.
+    * **1 Smartphone**: Digunakan oleh siswa peran **Analis HAKI (1 & 2)** untuk menganalisis pasal UU Hak Cipta & etika digital pada Bagian III LKPD.
+    * Siswa peran **Juru Bicara** dapat mengawasi solusi, mitigasi, dan refleksi dari perangkat mana pun.
+* **Shared Team Identity & Auto-Join Room**:
+  * Ketika 1 siswa (misal di laptop) mendaftarkan nama anggota tim di Kelompok X, seluruh perangkat rekan tim lainnya (HP) yang memilih Kelompok X otomatis mendeteksi room aktif dan langsung masuk ke ruang investigasi tanpa perlu mengetik ulang 6 nama anggota.
+  * Terdapat indikator `🟢 Room Aktif` pada grid pemilihan kelompok sehingga siswa tahu room kelompoknya telah dibuka rekan tim.
+* **Non-destructive Granular Auto-Sync**:
+  * Pemisahan penyimpanan ke database Supabase dilakukan secara independen per kolom:
+    * `simpanBukti`: Hanya memperbarui kolom `bukti_petunjuk` (tidak menimpa analisis atau solusi).
+    * `simpanAnalisis`: Hanya memperbarui kolom `analisis_pelanggaran` (tidak menimpa bukti atau solusi).
+    * `simpanSolusi`: Hanya memperbarui kolom `solusi_rekomendasi` (tetap mempertahankan susunan anggota dan waktu mulai).
+  * Mekanisme debounced saving (1000ms) mandiri per bagian dan pencegahan save-loop dengan cache referensi nilai lokal (`lastSaved...Ref`).
+* **Focus Conflict Protection (`activeFieldRef`)**:
+  * Menggunakan sistem pelacak kursor fokus aktif (`activeFieldRef`).
+  * Ketika update remote datang dari perangkat lain, teks pada kolom input/textarea yang sedang diketik siswa lokal TIDAK AKAN ditimpa (menghilangkan stutter, lag kursor, atau tulisan terhapus).
+* **Streaming Chat & Realtime Broadcast**:
+  * Hasil tanya jawab antara interregator laptop dengan Saksi AI otomatis ter-broadcast ke semua layar HP anggota tim secara *real-time* via Supabase Realtime Channel (`postgres_changes` pada `chat_history`).
+  * Dilengkapi **Smart Polling Fallback (setiap 3 detik)** untuk menjamin sinkronisasi tetap 100% lancar di jaringan Wi-Fi sekolah yang memblokir protokol WebSocket.
+* **Synchronized Group Countdown Timer**:
+  * Timestamp mulai (`timer_start`) dicatat secara terpusat pada data kelompok di database.
+  * Semua perangkat (laptop maupun HP) menampilkan detik countdown timer yang sama persis secara harmonis.
+* **Mobile Quick-Jump Navigation Bar**:
+  * Toolbar sticky navigasi cepat di atas formulir LKPD:
+    * `[🔍 Bukti (Pencatat)]`
+    * `[⚖️ Analisis UU (Analis)]`
+    * `[💡 Solusi & Mitigasi]`
+    * `[💭 Refleksi]`
+  * Memungkinkan siswa di smartphone langsung melompat ke bagian tugasnya tanpa harus terus-menerus melakukan scroll panjang.
+
 ---
 
 ## 10. KESIMPULAN FITUR UNGGULAN APLIKASI
-Hakita App telah mengintegrasikan siklus Problem-Based Learning (PBL) secara utuh:
-1. **Siswa**: Menjalankan investigasi interaktif dengan Saksi AI, mengisi lembar LKPD digital 5 bagian dalam batas waktu yang ditentukan guru.
-2. **Guru**: Memantau aktivitas interogasi real-time, melihat pengerjaan asli siswa berdampingan dengan evaluasi AI berbasis UU Hak Cipta No. 28/2014 & rubrik HOTS, mencetak berkas resmi PPG ber-kop, dan mengekspor rekap spreadsheet Excel.
+Hakita App telah mengintegrasikan siklus Problem-Based Learning (PBL) dan kolaborasi digital secara utuh:
+1. **Siswa**: Menjalankan investigasi interaktif dengan Saksi AI dalam ruangan kolaboratif multi-perangkat (*Multi-Device Room*), mengisi lembar LKPD digital 5 bagian secara terdistribusi (1 laptop interogasi, 1 HP catat bukti, 1 HP analisis pasal), dengan sinkronisasi waktu dan data tanpa konflik.
+2. **Guru**: Memantau aktivitas interogasi real-time, melihat pengerjaan asli siswa berdampingan dengan evaluasi AI berbasis UU Hak Cipta No. 28/2014 & rubrik HOTS, mengatur batas waktu per sesi kelas, mencetak berkas resmi PPG ber-kop, dan mengekspor rekap spreadsheet Excel.
 
 
 

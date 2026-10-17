@@ -6,6 +6,38 @@ import { DEFAULT_KELAS_LIST, DAFTAR_KASUS } from "@/lib/constants";
 
 const daftarKasus = DAFTAR_KASUS;
 
+// Helper untuk mengekstrak peranan anggota jika disimpan dalam format string gabungan
+const parseNamaAnggotaString = (raw: string) => {
+  const result = {
+    interregator: "",
+    pencatat1: "",
+    pencatat2: "",
+    analis1: "",
+    analis2: "",
+    jurubicara: ""
+  };
+  if (!raw) return result;
+
+  const parts = raw.split(/,\s*(?=\d+\.)/);
+  parts.forEach(part => {
+    const clean = part.trim();
+    if (clean.includes("(Interregator")) {
+      result.interregator = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Interregator.*/, "").trim();
+    } else if (clean.includes("(Pencatat Bukti 1)")) {
+      result.pencatat1 = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Pencatat Bukti 1.*/, "").trim();
+    } else if (clean.includes("(Pencatat Bukti 2)")) {
+      result.pencatat2 = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Pencatat Bukti 2.*/, "").trim();
+    } else if (clean.includes("(Analis HAKI 1)")) {
+      result.analis1 = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Analis HAKI 1.*/, "").trim();
+    } else if (clean.includes("(Analis HAKI 2)")) {
+      result.analis2 = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Analis HAKI 2.*/, "").trim();
+    } else if (clean.includes("(Juru Bicara")) {
+      result.jurubicara = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Juru Bicara.*/, "").trim();
+    }
+  });
+
+  return result;
+};
 
 export default function InvestigasiPage() {
   // Sesi Kelas
@@ -18,6 +50,9 @@ export default function InvestigasiPage() {
   // Sesi Kelompok & Anggota
   const [kelompokAktif, setKelompokAktif] = useState<number | null>(null);
   const [isIdentitasLengkap, setIsIdentitasLengkap] = useState(false);
+  const [activeGroups, setActiveGroups] = useState<number[]>([]);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [roomToast, setRoomToast] = useState<string | null>(null);
 
   // Bagian I: Anggota Tim & Peran (5–6 Anak/Kelompok)
   const [anggotaInterregator, setAnggotaInterregator] = useState("");
@@ -52,18 +87,60 @@ export default function InvestigasiPage() {
   const [refleksiDiri, setRefleksiDiri] = useState("");
   const [evaluasiAi, setEvaluasiAi] = useState<any>(null);
 
-  // Sesi Timer Investigasi (Tahap 3)
+  // Sesi Timer Investigasi (Tahap 3 & Sinkronisasi Multi-Device)
   const [durasiMenit, setDurasiMenit] = useState<number>(30);
   const [sisaDetik, setSisaDetik] = useState<number>(30 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [showTimeUpModal, setShowTimeUpModal] = useState<boolean>(false);
   const [hasAlertedTimeUp, setHasAlertedTimeUp] = useState<boolean>(false);
 
-  // Status Form LKPD
+  // Status Form LKPD & Koneksi
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [activeTabMobile, setActiveTabMobile] = useState<"chat" | "lembar">("chat");
   const [showKasusModal, setShowKasusModal] = useState(false);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+
+  // Focus & Conflict Prevention Ref
+  // Mencegah overwrite remote ke input/textarea yang sedang diketik siswa lokal
+  const activeFieldRef = useRef<string | null>(null);
+  const timerStartRef = useRef<number | null>(null);
+  const isLoadingRef = useRef<boolean>(false);
+
+  // Simpan referensi data terakhir yang tersimpan untuk mencegah duplicate writes / save loop
+  const lastSavedBuktiRef = useRef<{ p1: string; p2: string; p3: string }>({ p1: "", p2: "", p3: "" });
+  const lastSavedAnalisisRef = useRef<{ tindakan: string; jenis: string; kerugian: string }>({ tindakan: "", jenis: "", kerugian: "" });
+  const lastSavedSolusiRef = useRef<{ solusi: string; aturan: string; refleksi: string }>({ solusi: "", aturan: "", refleksi: "" });
+
+  // Refs untuk anggota & AI evaluasi agar update granular tidak menimpa data
+  const anggotaInterregatorRef = useRef(anggotaInterregator);
+  const anggotaPencatat1Ref = useRef(anggotaPencatat1);
+  const anggotaPencatat2Ref = useRef(anggotaPencatat2);
+  const anggotaAnalis1Ref = useRef(anggotaAnalis1);
+  const anggotaAnalis2Ref = useRef(anggotaAnalis2);
+  const anggotaJuruBicaraRef = useRef(anggotaJuruBicara);
+  const evaluasiAiRef = useRef(evaluasiAi);
+
+  // Section Refs untuk Quick Jump Navigation di LKPD
+  const sectionBuktiRef = useRef<HTMLDivElement>(null);
+  const sectionAnalisisRef = useRef<HTMLDivElement>(null);
+  const sectionSolusiRef = useRef<HTMLDivElement>(null);
+  const sectionRefleksiRef = useRef<HTMLDivElement>(null);
+
+  // Selalu sinkronkan refs dengan state
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
+
+  useEffect(() => {
+    anggotaInterregatorRef.current = anggotaInterregator;
+    anggotaPencatat1Ref.current = anggotaPencatat1;
+    anggotaPencatat2Ref.current = anggotaPencatat2;
+    anggotaAnalis1Ref.current = anggotaAnalis1;
+    anggotaAnalis2Ref.current = anggotaAnalis2;
+    anggotaJuruBicaraRef.current = anggotaJuruBicara;
+    evaluasiAiRef.current = evaluasiAi;
+  }, [anggotaInterregator, anggotaPencatat1, anggotaPencatat2, anggotaAnalis1, anggotaAnalis2, anggotaJuruBicara, evaluasiAi]);
 
   // Format Detik ke MM:SS
   const formatWaktu = (totalDetik: number) => {
@@ -72,17 +149,36 @@ export default function InvestigasiPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Inisialisasi dan Sinkronisasi Timer Investigasi
+  // String nama anggota gabungan (5–6 Anak/Kelompok)
+  const getGabunganNamaAnggota = () => {
+    const list: string[] = [];
+    if (anggotaInterregator.trim()) list.push(`1. ${anggotaInterregator.trim()} (Interregator Chat AI)`);
+    if (anggotaPencatat1.trim()) list.push(`2. ${anggotaPencatat1.trim()} (Pencatat Bukti 1)`);
+    if (anggotaPencatat2.trim()) list.push(`3. ${anggotaPencatat2.trim()} (Pencatat Bukti 2)`);
+    if (anggotaAnalis1.trim()) list.push(`4. ${anggotaAnalis1.trim()} (Analis HAKI 1)`);
+    if (anggotaAnalis2.trim()) list.push(`5. ${anggotaAnalis2.trim()} (Analis HAKI 2)`);
+    if (anggotaJuruBicara.trim()) list.push(`6. ${anggotaJuruBicara.trim()} (Juru Bicara Presentasi)`);
+    return list.join(", ");
+  };
+
+  // Inisialisasi dan Sinkronisasi Timer Investigasi Terpusat
   useEffect(() => {
     if (!isIdentitasLengkap || !kodeKelasAktif || !kelompokAktif) return;
 
     const timerStorageKey = `hakita_timer_${kodeKelasAktif}_kelompok_${kelompokAktif}`;
-    const storedStart = localStorage.getItem(timerStorageKey);
-    let startTime = storedStart ? parseInt(storedStart, 10) : 0;
+    let startTime = timerStartRef.current;
+
+    if (!startTime) {
+      const storedStart = localStorage.getItem(timerStorageKey);
+      startTime = storedStart ? parseInt(storedStart, 10) : 0;
+    }
 
     if (!startTime || isNaN(startTime)) {
       startTime = Date.now();
+      timerStartRef.current = startTime;
       localStorage.setItem(timerStorageKey, startTime.toString());
+    } else {
+      timerStartRef.current = startTime;
     }
 
     const totalDetik = durasiMenit * 60;
@@ -104,10 +200,13 @@ export default function InvestigasiPage() {
 
     const timerStorageKey = `hakita_timer_${kodeKelasAktif}_kelompok_${kelompokAktif}`;
     const interval = setInterval(() => {
-      const storedStart = localStorage.getItem(timerStorageKey);
-      if (!storedStart) return;
+      let startTime = timerStartRef.current;
+      if (!startTime) {
+        const storedStart = localStorage.getItem(timerStorageKey);
+        if (storedStart) startTime = parseInt(storedStart, 10);
+      }
+      if (!startTime) return;
 
-      const startTime = parseInt(storedStart, 10);
       const totalDetik = durasiMenit * 60;
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       const remaining = Math.max(0, totalDetik - elapsed);
@@ -177,6 +276,18 @@ export default function InvestigasiPage() {
         setDurasiMenit(matchedDurasi);
         setSisaDetik(matchedDurasi * 60);
         setErrorKelas("");
+
+        // Cek room kelompok mana saja yang sudah aktif untuk kelas ini
+        if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+          const { data: existingReports } = await supabase
+            .from("lkpd_reports")
+            .select("kelompok")
+            .eq("kelas", matchedKelas);
+
+          if (existingReports && existingReports.length > 0) {
+            setActiveGroups(existingReports.map(r => r.kelompok));
+          }
+        }
       } else {
         setErrorKelas("Kode Kelas tidak ditemukan! Minta kode aktif dari Guru Anda.");
       }
@@ -188,87 +299,384 @@ export default function InvestigasiPage() {
     }
   };
 
+  // MULTI-DEVICE: Handler Remote Update LKPD dengan Proteksi Focus Input
+  const handleRemoteLkpdUpdate = (data: {
+    bukti_petunjuk?: string;
+    analisis_pelanggaran?: string;
+    solusi_rekomendasi?: string;
+    is_submitted?: boolean;
+  }) => {
+    // 1. Sinkronisasi Bagian II (Bukti)
+    if (data.bukti_petunjuk) {
+      try {
+        const parsed = JSON.parse(data.bukti_petunjuk);
+        const p1 = parsed.p1 ?? "";
+        const p2 = parsed.p2 ?? "";
+        const p3 = parsed.p3 ?? "";
 
-  // String nama anggota gabungan (5–6 Anak/Kelompok)
-  const getGabunganNamaAnggota = () => {
-    const list: string[] = [];
-    if (anggotaInterregator.trim()) list.push(`1. ${anggotaInterregator.trim()} (Interregator Chat AI)`);
-    if (anggotaPencatat1.trim()) list.push(`2. ${anggotaPencatat1.trim()} (Pencatat Bukti 1)`);
-    if (anggotaPencatat2.trim()) list.push(`3. ${anggotaPencatat2.trim()} (Pencatat Bukti 2)`);
-    if (anggotaAnalis1.trim()) list.push(`4. ${anggotaAnalis1.trim()} (Analis HAKI 1)`);
-    if (anggotaAnalis2.trim()) list.push(`5. ${anggotaAnalis2.trim()} (Analis HAKI 2)`);
-    if (anggotaJuruBicara.trim()) list.push(`6. ${anggotaJuruBicara.trim()} (Juru Bicara Presentasi)`);
-    return list.join(", ");
+        lastSavedBuktiRef.current = { p1, p2, p3 };
+
+        if (activeFieldRef.current !== "petunjuk1") setPetunjuk1(p1);
+        if (activeFieldRef.current !== "petunjuk2") setPetunjuk2(p2);
+        if (activeFieldRef.current !== "petunjuk3") setPetunjuk3(p3);
+      } catch {
+        if (activeFieldRef.current !== "petunjuk1") setPetunjuk1(data.bukti_petunjuk);
+      }
+    }
+
+    // 2. Sinkronisasi Bagian III (Analisis)
+    if (data.analisis_pelanggaran) {
+      try {
+        const parsed = JSON.parse(data.analisis_pelanggaran);
+        const tindakan = parsed.tindakan ?? "";
+        const jenis = parsed.jenis ?? "";
+        const kerugian = parsed.kerugian ?? "";
+
+        lastSavedAnalisisRef.current = { tindakan, jenis, kerugian };
+
+        if (activeFieldRef.current !== "analisisTindakan") setAnalisisTindakan(tindakan);
+        if (activeFieldRef.current !== "jenisHaki") setJenisHaki(jenis);
+        if (activeFieldRef.current !== "analisisKerugian") setAnalisisKerugian(kerugian);
+      } catch {
+        if (activeFieldRef.current !== "analisisTindakan") setAnalisisTindakan(data.analisis_pelanggaran);
+      }
+    }
+
+    // 3. Sinkronisasi Bagian IV & V (Solusi, Mitigasi, Refleksi, Timer & Anggota)
+    if (data.solusi_rekomendasi) {
+      try {
+        const parsed = JSON.parse(data.solusi_rekomendasi);
+        const solusi = parsed.solusi ?? "";
+        const aturan = parsed.aturan ?? "";
+        const refleksi = parsed.refleksi ?? "";
+
+        lastSavedSolusiRef.current = { solusi, aturan, refleksi };
+
+        if (activeFieldRef.current !== "solusiAdil") setSolusiAdil(solusi);
+        if (activeFieldRef.current !== "aturanEtis") setAturanEtis(aturan);
+        if (activeFieldRef.current !== "refleksiDiri") setRefleksiDiri(refleksi);
+        if (parsed.evaluasi_ai) setEvaluasiAi(parsed.evaluasi_ai);
+
+        if (parsed.timer_start && (!timerStartRef.current || timerStartRef.current !== parsed.timer_start)) {
+          timerStartRef.current = parsed.timer_start;
+          if (kodeKelasAktif && kelompokAktif) {
+            localStorage.setItem(`hakita_timer_${kodeKelasAktif}_kelompok_${kelompokAktif}`, parsed.timer_start.toString());
+          }
+        }
+
+        if (parsed.anggota_detail) {
+          setAnggotaInterregator(prev => prev || parsed.anggota_detail.interregator || "");
+          setAnggotaPencatat1(prev => prev || parsed.anggota_detail.pencatat1 || "");
+          setAnggotaPencatat2(prev => prev || parsed.anggota_detail.pencatat2 || "");
+          setAnggotaAnalis1(prev => prev || parsed.anggota_detail.analis1 || "");
+          setAnggotaAnalis2(prev => prev || parsed.anggota_detail.analis2 || "");
+          setAnggotaJuruBicara(prev => prev || parsed.anggota_detail.jurubicara || "");
+        }
+      } catch {
+        if (activeFieldRef.current !== "solusiAdil") setSolusiAdil(data.solusi_rekomendasi);
+      }
+    }
+
+    // 4. Sinkronisasi Status Final Submit
+    if (typeof data.is_submitted === "boolean") {
+      setIsSubmitted(data.is_submitted);
+    }
   };
 
-  // Muat Laporan LKPD yang ada
-  useEffect(() => {
-    if (!kelompokAktif || !isIdentitasLengkap || !namaKelas) return;
+  // MULTI-DEVICE: Pemilihan Kelompok & Pengecekan Room Aktif Otomatis
+  const handlePilihKelompok = async (num: number) => {
+    setIsJoiningRoom(true);
+    setKelompokAktif(num);
 
-    const muatLkpd = async () => {
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) return;
+    const kasusAssigned = daftarKasus.find(k => k.kelompok.includes(num)) || daftarKasus[0];
+    setKasusAktif(kasusAssigned);
 
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+      setIsJoiningRoom(false);
+      return;
+    }
+
+    try {
+      // 1. Cek apakah LKPD kelompok ini sudah ada di database (sudah didaftarkan device rekan tim)
+      const { data: lkpdData } = await supabase
+        .from("lkpd_reports")
+        .select("*")
+        .eq("kelompok", num)
+        .eq("kelas", namaKelas)
+        .maybeSingle();
+
+      let sudahAdaIdentitas = false;
+
+      if (lkpdData) {
+        // Parse bukti
+        if (lkpdData.bukti_petunjuk) {
+          try {
+            const parsed = JSON.parse(lkpdData.bukti_petunjuk);
+            setPetunjuk1(parsed.p1 || "");
+            setPetunjuk2(parsed.p2 || "");
+            setPetunjuk3(parsed.p3 || "");
+            lastSavedBuktiRef.current = { p1: parsed.p1 || "", p2: parsed.p2 || "", p3: parsed.p3 || "" };
+          } catch {
+            setPetunjuk1(lkpdData.bukti_petunjuk);
+          }
+        }
+
+        // Parse analisis
+        if (lkpdData.analisis_pelanggaran) {
+          try {
+            const parsed = JSON.parse(lkpdData.analisis_pelanggaran);
+            setAnalisisTindakan(parsed.tindakan || "");
+            setJenisHaki(parsed.jenis || "");
+            setAnalisisKerugian(parsed.kerugian || "");
+            lastSavedAnalisisRef.current = { tindakan: parsed.tindakan || "", jenis: parsed.jenis || "", kerugian: parsed.kerugian || "" };
+          } catch {
+            setAnalisisTindakan(lkpdData.analisis_pelanggaran);
+          }
+        }
+
+        // Parse solusi & anggota tim
+        if (lkpdData.solusi_rekomendasi) {
+          try {
+            const parsed = JSON.parse(lkpdData.solusi_rekomendasi);
+            setSolusiAdil(parsed.solusi || "");
+            setAturanEtis(parsed.aturan || "");
+            setRefleksiDiri(parsed.refleksi || "");
+            if (parsed.evaluasi_ai) setEvaluasiAi(parsed.evaluasi_ai);
+            lastSavedSolusiRef.current = { solusi: parsed.solusi || "", aturan: parsed.aturan || "", refleksi: parsed.refleksi || "" };
+
+            if (parsed.timer_start) {
+              timerStartRef.current = parsed.timer_start;
+              const timerStorageKey = `hakita_timer_${kodeKelasAktif}_kelompok_${num}`;
+              localStorage.setItem(timerStorageKey, parsed.timer_start.toString());
+            }
+
+            if (parsed.anggota_detail) {
+              setAnggotaInterregator(parsed.anggota_detail.interregator || "");
+              setAnggotaPencatat1(parsed.anggota_detail.pencatat1 || "");
+              setAnggotaPencatat2(parsed.anggota_detail.pencatat2 || "");
+              setAnggotaAnalis1(parsed.anggota_detail.analis1 || "");
+              setAnggotaAnalis2(parsed.anggota_detail.analis2 || "");
+              setAnggotaJuruBicara(parsed.anggota_detail.jurubicara || "");
+              if (parsed.anggota_detail.interregator) sudahAdaIdentitas = true;
+            } else if (parsed.nama_anggota) {
+              const parsedRoles = parseNamaAnggotaString(parsed.nama_anggota);
+              setAnggotaInterregator(parsedRoles.interregator);
+              setAnggotaPencatat1(parsedRoles.pencatat1);
+              setAnggotaPencatat2(parsedRoles.pencatat2);
+              setAnggotaAnalis1(parsedRoles.analis1);
+              setAnggotaAnalis2(parsedRoles.analis2);
+              setAnggotaJuruBicara(parsedRoles.jurubicara);
+              if (parsedRoles.interregator || parsed.nama_anggota.length > 5) sudahAdaIdentitas = true;
+            }
+          } catch {
+            setSolusiAdil(lkpdData.solusi_rekomendasi);
+          }
+        }
+
+        if (typeof lkpdData.is_submitted === "boolean") {
+          setIsSubmitted(lkpdData.is_submitted);
+          if (lkpdData.is_submitted) sudahAdaIdentitas = true;
+        }
+
+        // Jika identitas sudah didaftarkan oleh laptop/perangkat lain, langsung buka room!
+        if (sudahAdaIdentitas) {
+          setIsIdentitasLengkap(true);
+          setRoomToast(`🎉 Terhubung ke Room Kelompok ${num}! Kolaborasi aktif.`);
+          setTimeout(() => setRoomToast(null), 4000);
+        }
+      }
+
+      // 2. Muat Chat History yang sudah ada dari database
+      const { data: chatData } = await supabase
+        .from("chat_history")
+        .select("role, content")
+        .eq("kelompok", num)
+        .eq("kelas", namaKelas)
+        .order("created_at", { ascending: true });
+
+      if (chatData && chatData.length > 0) {
+        setPesan(chatData.map(c => ({ role: c.role, content: c.content })));
+      } else {
+        setPesan([]);
+      }
+    } catch (err) {
+      console.error("Gagal menghubungkan ke room kelompok:", err);
+    } finally {
+      setIsJoiningRoom(false);
+    }
+  };
+
+  // MULTI-DEVICE: Inisialisasi Room saat Perangkat Pertama Mendaftarkan Anggota
+  const handleMulaiInvestigasi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!anggotaInterregator.trim()) return;
+
+    const now = Date.now();
+    if (!timerStartRef.current) {
+      timerStartRef.current = now;
+      const timerStorageKey = `hakita_timer_${kodeKelasAktif}_kelompok_${kelompokAktif}`;
+      localStorage.setItem(timerStorageKey, now.toString());
+    }
+
+    setIsIdentitasLengkap(true);
+
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
       try {
-        const { data } = await supabase
+        const payloadBukti = JSON.stringify({ p1: petunjuk1, p2: petunjuk2, p3: petunjuk3 });
+        const payloadAnalisis = JSON.stringify({ tindakan: analisisTindakan, jenis: jenisHaki, kerugian: analisisKerugian });
+        const payloadSolusi = JSON.stringify({
+          solusi: solusiAdil,
+          aturan: aturanEtis,
+          refleksi: refleksiDiri,
+          nama_anggota: getGabunganNamaAnggota(),
+          anggota_detail: {
+            interregator: anggotaInterregator,
+            pencatat1: anggotaPencatat1,
+            pencatat2: anggotaPencatat2,
+            analis1: anggotaAnalis1,
+            analis2: anggotaAnalis2,
+            jurubicara: anggotaJuruBicara,
+          },
+          timer_start: timerStartRef.current,
+        });
+
+        const { data: existing } = await supabase
           .from("lkpd_reports")
-          .select("bukti_petunjuk, analisis_pelanggaran, solusi_rekomendasi, is_submitted")
+          .select("id")
           .eq("kelompok", kelompokAktif)
           .eq("kelas", namaKelas)
           .maybeSingle();
 
-        if (data) {
-          // Parse Bagian II (bukti_petunjuk)
-          if (data.bukti_petunjuk) {
-            try {
-              const parsed = JSON.parse(data.bukti_petunjuk);
-              setPetunjuk1(parsed.p1 || "");
-              setPetunjuk2(parsed.p2 || "");
-              setPetunjuk3(parsed.p3 || "");
-            } catch {
-              setPetunjuk1(data.bukti_petunjuk);
-            }
-          }
-
-          // Parse Bagian III (analisis_pelanggaran)
-          if (data.analisis_pelanggaran) {
-            try {
-              const parsed = JSON.parse(data.analisis_pelanggaran);
-              setAnalisisTindakan(parsed.tindakan || "");
-              setJenisHaki(parsed.jenis || "");
-              setAnalisisKerugian(parsed.kerugian || "");
-            } catch {
-              setAnalisisTindakan(data.analisis_pelanggaran);
-            }
-          }
-
-          // Parse Bagian IV & V (solusi_rekomendasi)
-          if (data.solusi_rekomendasi) {
-            try {
-              const parsed = JSON.parse(data.solusi_rekomendasi);
-              setSolusiAdil(parsed.solusi || "");
-              setAturanEtis(parsed.aturan || "");
-              setRefleksiDiri(parsed.refleksi || "");
-              if (parsed.evaluasi_ai) {
-                setEvaluasiAi(parsed.evaluasi_ai);
-              }
-            } catch {
-              setSolusiAdil(data.solusi_rekomendasi);
-            }
-          }
-
-          if (typeof data.is_submitted === "boolean") {
-            setIsSubmitted(data.is_submitted);
-          }
+        if (existing) {
+          await supabase
+            .from("lkpd_reports")
+            .update({
+              kasus_id: kasusAktif.id,
+              solusi_rekomendasi: payloadSolusi,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", existing.id);
+        } else {
+          await supabase
+            .from("lkpd_reports")
+            .insert({
+              kelompok: kelompokAktif,
+              kelas: namaKelas,
+              kasus_id: kasusAktif.id,
+              bukti_petunjuk: payloadBukti,
+              analisis_pelanggaran: payloadAnalisis,
+              solusi_rekomendasi: payloadSolusi,
+              is_submitted: false
+            });
         }
       } catch (err) {
-        console.error("Gagal muat LKPD:", err);
+        console.error("Gagal inisialisasi room kelompok:", err);
       }
-    };
+    }
+  };
 
-    muatLkpd();
-  }, [kelompokAktif, isIdentitasLengkap, namaKelas]);
+  // MULTI-DEVICE: Granular Non-destructive Savers (Masing-masing bagian tersimpan mandiri)
+  const simpanBukti = async (p1: string, p2: string, p3: string) => {
+    if (!kelompokAktif || !namaKelas) return;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+      lastSavedBuktiRef.current = { p1, p2, p3 };
+      setSaveStatus("saved");
+      return;
+    }
 
-  // Simpan LKPD ke Supabase
+    try {
+      const payloadBukti = JSON.stringify({ p1, p2, p3 });
+      const { error } = await supabase
+        .from("lkpd_reports")
+        .update({
+          bukti_petunjuk: payloadBukti,
+          updated_at: new Date().toISOString()
+        })
+        .eq("kelompok", kelompokAktif)
+        .eq("kelas", namaKelas);
+
+      if (error) throw error;
+      lastSavedBuktiRef.current = { p1, p2, p3 };
+      setSaveStatus("saved");
+    } catch (err) {
+      console.error("Gagal simpan bukti:", err);
+      setSaveStatus("error");
+    }
+  };
+
+  const simpanAnalisis = async (tindakan: string, jenis: string, kerugian: string) => {
+    if (!kelompokAktif || !namaKelas) return;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+      lastSavedAnalisisRef.current = { tindakan, jenis, kerugian };
+      setSaveStatus("saved");
+      return;
+    }
+
+    try {
+      const payloadAnalisis = JSON.stringify({ tindakan, jenis, kerugian });
+      const { error } = await supabase
+        .from("lkpd_reports")
+        .update({
+          analisis_pelanggaran: payloadAnalisis,
+          updated_at: new Date().toISOString()
+        })
+        .eq("kelompok", kelompokAktif)
+        .eq("kelas", namaKelas);
+
+      if (error) throw error;
+      lastSavedAnalisisRef.current = { tindakan, jenis, kerugian };
+      setSaveStatus("saved");
+    } catch (err) {
+      console.error("Gagal simpan analisis:", err);
+      setSaveStatus("error");
+    }
+  };
+
+  const simpanSolusi = async (solusi: string, aturan: string, refleksi: string) => {
+    if (!kelompokAktif || !namaKelas) return;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+      lastSavedSolusiRef.current = { solusi, aturan, refleksi };
+      setSaveStatus("saved");
+      return;
+    }
+
+    try {
+      const payloadSolusi = JSON.stringify({
+        solusi,
+        aturan,
+        refleksi,
+        nama_anggota: getGabunganNamaAnggota(),
+        anggota_detail: {
+          interregator: anggotaInterregatorRef.current,
+          pencatat1: anggotaPencatat1Ref.current,
+          pencatat2: anggotaPencatat2Ref.current,
+          analis1: anggotaAnalis1Ref.current,
+          analis2: anggotaAnalis2Ref.current,
+          jurubicara: anggotaJuruBicaraRef.current,
+        },
+        timer_start: timerStartRef.current,
+        ...(evaluasiAiRef.current ? { evaluasi_ai: evaluasiAiRef.current } : {})
+      });
+
+      const { error } = await supabase
+        .from("lkpd_reports")
+        .update({
+          solusi_rekomendasi: payloadSolusi,
+          updated_at: new Date().toISOString()
+        })
+        .eq("kelompok", kelompokAktif)
+        .eq("kelas", namaKelas);
+
+      if (error) throw error;
+      lastSavedSolusiRef.current = { solusi, aturan, refleksi };
+      setSaveStatus("saved");
+    } catch (err) {
+      console.error("Gagal simpan solusi:", err);
+      setSaveStatus("error");
+    }
+  };
+
+  // Simpan Master (Dipanggil saat Final Submit)
   const simpanKeDatabase = async (submitted: boolean = isSubmitted) => {
     if (!kelompokAktif || !namaKelas) return;
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
@@ -295,7 +703,16 @@ export default function InvestigasiPage() {
       aturan: aturanEtis,
       refleksi: refleksiDiri,
       nama_anggota: getGabunganNamaAnggota(),
-      ...(evaluasiAi ? { evaluasi_ai: evaluasiAi } : {})
+      anggota_detail: {
+        interregator: anggotaInterregatorRef.current,
+        pencatat1: anggotaPencatat1Ref.current,
+        pencatat2: anggotaPencatat2Ref.current,
+        analis1: anggotaAnalis1Ref.current,
+        analis2: anggotaAnalis2Ref.current,
+        jurubicara: anggotaJuruBicaraRef.current,
+      },
+      timer_start: timerStartRef.current,
+      ...(evaluasiAiRef.current ? { evaluasi_ai: evaluasiAiRef.current } : {})
     });
 
     try {
@@ -336,6 +753,9 @@ export default function InvestigasiPage() {
         if (error) throw error;
       }
 
+      lastSavedBuktiRef.current = { p1: petunjuk1, p2: petunjuk2, p3: petunjuk3 };
+      lastSavedAnalisisRef.current = { tindakan: analisisTindakan, jenis: jenisHaki, kerugian: analisisKerugian };
+      lastSavedSolusiRef.current = { solusi: solusiAdil, aturan: aturanEtis, refleksi: refleksiDiri };
       setSaveStatus("saved");
     } catch (err) {
       console.error("Gagal simpan LKPD:", err);
@@ -343,16 +763,168 @@ export default function InvestigasiPage() {
     }
   };
 
-  // Debounce Auto-Save
+  // MULTI-DEVICE: Granular Debounce Auto-Saves (Hanya simpan bagian yang berubah secara lokal)
+  // 1. Debounce Bagian II (Bukti)
   useEffect(() => {
-    if (!isIdentitasLengkap) return;
+    if (!isIdentitasLengkap || !kelompokAktif || !namaKelas) return;
+    if (
+      petunjuk1 === lastSavedBuktiRef.current.p1 &&
+      petunjuk2 === lastSavedBuktiRef.current.p2 &&
+      petunjuk3 === lastSavedBuktiRef.current.p3
+    ) {
+      return;
+    }
+
     setSaveStatus("saving");
     const timer = setTimeout(() => {
-      simpanKeDatabase(isSubmitted);
-    }, 1200);
+      simpanBukti(petunjuk1, petunjuk2, petunjuk3);
+    }, 1000);
 
     return () => clearTimeout(timer);
-  }, [petunjuk1, petunjuk2, petunjuk3, analisisTindakan, jenisHaki, analisisKerugian, solusiAdil, aturanEtis, refleksiDiri]);
+  }, [petunjuk1, petunjuk2, petunjuk3, isIdentitasLengkap, kelompokAktif, namaKelas]);
+
+  // 2. Debounce Bagian III (Analisis)
+  useEffect(() => {
+    if (!isIdentitasLengkap || !kelompokAktif || !namaKelas) return;
+    if (
+      analisisTindakan === lastSavedAnalisisRef.current.tindakan &&
+      jenisHaki === lastSavedAnalisisRef.current.jenis &&
+      analisisKerugian === lastSavedAnalisisRef.current.kerugian
+    ) {
+      return;
+    }
+
+    setSaveStatus("saving");
+    const timer = setTimeout(() => {
+      simpanAnalisis(analisisTindakan, jenisHaki, analisisKerugian);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [analisisTindakan, jenisHaki, analisisKerugian, isIdentitasLengkap, kelompokAktif, namaKelas]);
+
+  // 3. Debounce Bagian IV & V (Solusi & Refleksi)
+  useEffect(() => {
+    if (!isIdentitasLengkap || !kelompokAktif || !namaKelas) return;
+    if (
+      solusiAdil === lastSavedSolusiRef.current.solusi &&
+      aturanEtis === lastSavedSolusiRef.current.aturan &&
+      refleksiDiri === lastSavedSolusiRef.current.refleksi
+    ) {
+      return;
+    }
+
+    setSaveStatus("saving");
+    const timer = setTimeout(() => {
+      simpanSolusi(solusiAdil, aturanEtis, refleksiDiri);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [solusiAdil, aturanEtis, refleksiDiri, isIdentitasLengkap, kelompokAktif, namaKelas]);
+
+  // MULTI-DEVICE: Hybrid Realtime + Polling Fallback Subscription
+  // Menjamin 100% sinkronisasi di jaringan sekolah yang memblokir WebSocket
+  useEffect(() => {
+    if (!isIdentitasLengkap || !kodeKelasAktif || !kelompokAktif || !namaKelas) return;
+
+    const isSupabaseConfigured = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL && 
+      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")
+    );
+    if (!isSupabaseConfigured) return;
+
+    // 1. Setup Supabase Realtime Channel
+    const channelName = `room_${namaKelas}_kel_${kelompokAktif}_${Date.now()}`;
+    const channel = supabase.channel(channelName);
+
+    channel
+      // Listener pembaruan isi LKPD dari anggota tim lain
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "lkpd_reports",
+          filter: `kelompok=eq.${kelompokAktif}`
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated && updated.kelas === namaKelas) {
+            handleRemoteLkpdUpdate(updated);
+          }
+        }
+      )
+      // Listener chat interogasi baru dari laptop interregator
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_history",
+          filter: `kelompok=eq.${kelompokAktif}`
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          if (newMsg && newMsg.kelas === namaKelas) {
+            setPesan((prev) => {
+              // Hindari duplikasi jika pesan sudah ada
+              const exists = prev.some(
+                (p, idx) => idx >= prev.length - 2 && p.role === newMsg.role && p.content === newMsg.content
+              );
+              if (exists) return prev;
+              return [...prev, { role: newMsg.role, content: newMsg.content }];
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setIsRealtimeConnected(true);
+        }
+      });
+
+    // 2. Setup Smart Polling Fallback (setiap 3 detik)
+    const pollInterval = setInterval(async () => {
+      try {
+        // Poll LKPD changes
+        const { data: lkpdData } = await supabase
+          .from("lkpd_reports")
+          .select("bukti_petunjuk, analisis_pelanggaran, solusi_rekomendasi, is_submitted")
+          .eq("kelompok", kelompokAktif)
+          .eq("kelas", namaKelas)
+          .maybeSingle();
+
+        if (lkpdData) {
+          handleRemoteLkpdUpdate(lkpdData);
+        }
+
+        // Poll Chat changes (hanya jika AI saksi sedang tidak mengetik secara streaming di perangkat lokal)
+        if (!isLoadingRef.current) {
+          const { data: chatData } = await supabase
+            .from("chat_history")
+            .select("role, content")
+            .eq("kelompok", kelompokAktif)
+            .eq("kelas", namaKelas)
+            .order("created_at", { ascending: true });
+
+          if (chatData && chatData.length > 0) {
+            setPesan((prev) => {
+              if (prev.length !== chatData.length) {
+                return chatData.map((c) => ({ role: c.role, content: c.content }));
+              }
+              return prev;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Polling fallback notice:", err);
+      }
+    }, 3000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [isIdentitasLengkap, kodeKelasAktif, kelompokAktif, namaKelas]);
 
   // Submit Final
   const handleFinalSubmit = async () => {
@@ -365,243 +937,6 @@ export default function InvestigasiPage() {
     await simpanKeDatabase(true);
     alert("🎉 Berkas Investigasi Tim Detektif berhasil dikirim ke Guru!");
   };
-
-  // TAHAP 1: INPUT KODE KELAS
-  if (!kodeKelasAktif) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
-        <button 
-          onClick={() => window.location.href = '/'}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
-        >
-          <span>←</span> Kembali ke Beranda
-        </button>
-
-        <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700 max-w-md w-full text-center">
-          <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-lg" />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">
-            DETEKTIF HAKI
-          </h1>
-          <p className="text-slate-400 text-xs md:text-sm mb-6">
-            Masukkan Kode Akses Kelas yang dibagikan oleh Guru Anda untuk memulai investigasi.
-          </p>
-
-          <form onSubmit={handleVerifikasiKelas} className="space-y-4 text-left">
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <span>🎓</span> Kode Akses Kelas
-              </label>
-              <input
-                type="text"
-                required
-                value={kodeKelasInput}
-                onChange={(e) => {
-                  setKodeKelasInput(e.target.value);
-                  if (errorKelas) setErrorKelas("");
-                }}
-                placeholder="Contoh: HAKI-9A"
-                className={`w-full bg-slate-900 border rounded-2xl px-4 py-3.5 text-white font-mono uppercase tracking-widest text-center text-lg focus:outline-none transition-all ${
-                  errorKelas 
-                    ? "border-red-500 bg-red-950/20 focus:ring-2 focus:ring-red-500" 
-                    : "border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                }`}
-              />
-              {errorKelas && (
-                <p className="text-red-400 text-xs mt-2 font-medium flex items-center gap-1">
-                  <span>⚠️</span> {errorKelas}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={isValidatingKelas || !kodeKelasInput.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg hover:-translate-y-0.5 text-sm flex items-center justify-center gap-2"
-            >
-              {isValidatingKelas ? "Memverifikasi..." : "Lanjut ke Pemilihan Kelompok →"}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // TAHAP 2: PEMILIHAN KELOMPOK
-  if (!kelompokAktif) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
-        <button 
-          onClick={() => {
-            setKodeKelasAktif(null);
-            setNamaKelas("");
-            setKodeKelasInput("");
-          }}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
-        >
-          <span>←</span> Ganti Kelas
-        </button>
-
-        <div className="text-center mb-8 mt-12 md:mt-0">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
-            <span>Sesi Kelas: {namaKelas} ({kodeKelasAktif})</span>
-            <span>•</span>
-            <span className="text-amber-400 font-extrabold flex items-center gap-1">
-              <span>⏱️</span> {durasiMenit} Menit
-            </span>
-          </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-            Identifikasi Tim Detektif
-          </h1>
-          <p className="text-slate-400 text-sm md:text-base">Pilih nomor kelompok Anda untuk menerima berkas kasus spesifik.</p>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-3xl w-full">
-          {[1, 2, 3, 4, 5, 6].map((num) => (
-            <button 
-              key={num}
-              onClick={() => {
-                setKelompokAktif(num);
-                const kasusAssigned = daftarKasus.find(k => k.kelompok.includes(num));
-                if (kasusAssigned) {
-                  setKasusAktif(kasusAssigned);
-                  setPesan([]);
-                }
-              }}
-              className="py-8 px-6 bg-slate-800 border-2 border-slate-700 rounded-3xl shadow-lg hover:border-blue-500 hover:bg-slate-800/80 hover:-translate-y-2 transition-all duration-300 text-xl font-bold text-slate-200 flex flex-col items-center gap-3"
-            >
-              <span className="text-4xl drop-shadow-md">🕵️‍♂️</span>
-              Kelompok {num}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // TAHAP 3: REGISTRASI TIM (BAGIAN I: IDENTITAS & PERAN ANGGOTA)
-  if (kelompokAktif && !isIdentitasLengkap) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
-        <button 
-          onClick={() => setKelompokAktif(null)}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
-        >
-          <span>←</span> Kembali Pilih Kelompok
-        </button>
-
-        <div className="bg-slate-800 p-6 md:p-8 rounded-3xl shadow-xl border border-slate-700 max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-width:thin]">
-          <div className="text-center mb-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-2 uppercase tracking-wider">
-              <span>Kelas {namaKelas} • Kelompok {kelompokAktif}</span>
-              <span>•</span>
-              <span className="text-amber-400 flex items-center gap-1 font-bold">
-                <span>⏱️</span> {durasiMenit} Menit
-              </span>
-            </div>
-            <div className="text-4xl mb-1.5">👥</div>
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-1">BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
-            <p className="text-slate-400 text-xs">Masukkan nama anggota tim sesuai peran detektif masing-masing.</p>
-          </div>
-
-          
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            if (anggotaInterregator.trim()) {
-              setIsIdentitasLengkap(true);
-            }
-          }} className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-blue-300 mb-1">
-                1. Anggota 1 (Interregator Chat AI) <span className="text-red-400">*</span>
-              </label>
-              <input 
-                type="text"
-                required
-                value={anggotaInterregator}
-                onChange={(e) => setAnggotaInterregator(e.target.value)}
-                placeholder="Nama siswa yang bertugas chat interogasi dengan AI"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-emerald-300 mb-1">
-                2. Anggota 2 (Pencatat Bukti 1)
-              </label>
-              <input 
-                type="text"
-                value={anggotaPencatat1}
-                onChange={(e) => setAnggotaPencatat1(e.target.value)}
-                placeholder="Nama siswa pencatat petunjuk kunci 1"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-teal-300 mb-1">
-                3. Anggota 3 (Pencatat Bukti 2)
-              </label>
-              <input 
-                type="text"
-                value={anggotaPencatat2}
-                onChange={(e) => setAnggotaPencatat2(e.target.value)}
-                placeholder="Nama siswa pencatat petunjuk kunci 2"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-teal-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-purple-300 mb-1">
-                4. Anggota 4 (Analis HAKI 1)
-              </label>
-              <input 
-                type="text"
-                value={anggotaAnalis1}
-                onChange={(e) => setAnggotaAnalis1(e.target.value)}
-                placeholder="Nama siswa analis pelanggaran hukum/etika 1"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-indigo-300 mb-1">
-                5. Anggota 5 (Analis HAKI 2)
-              </label>
-              <input 
-                type="text"
-                value={anggotaAnalis2}
-                onChange={(e) => setAnggotaAnalis2(e.target.value)}
-                placeholder="Nama siswa analis pelanggaran hukum/etika 2"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-amber-300 mb-1">
-                6. Anggota 6 (Juru Bicara Presentasi / Opsional jika 5 anak)
-              </label>
-              <input 
-                type="text"
-                value={anggotaJuruBicara}
-                onChange={(e) => setAnggotaJuruBicara(e.target.value)}
-                placeholder="Nama siswa juru bicara saat presentasi kelas"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            <button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg mt-3 text-sm flex items-center justify-center gap-2 cursor-pointer"
-            >
-              Mulai Investigasi & Buka Berkas 🔍
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   // Kirim Pesan Interogasi Chat ke AI
   const kirimPesan = async (e: React.FormEvent) => {
@@ -681,11 +1016,276 @@ export default function InvestigasiPage() {
     }
   };
 
+  // TAHAP 1: INPUT KODE KELAS
+  if (!kodeKelasAktif) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
+        <button 
+          onClick={() => window.location.href = '/'}
+          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
+        >
+          <span>←</span> Kembali ke Beranda
+        </button>
+
+        <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700 max-w-md w-full text-center">
+          <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-lg" />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">
+            DETEKTIF HAKI
+          </h1>
+          <p className="text-slate-400 text-xs md:text-sm mb-6">
+            Masukkan Kode Akses Kelas yang dibagikan oleh Guru Anda untuk memulai investigasi kolaboratif.
+          </p>
+
+          <form onSubmit={handleVerifikasiKelas} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span>🎓</span> Kode Akses Kelas
+              </label>
+              <input
+                type="text"
+                required
+                value={kodeKelasInput}
+                onChange={(e) => {
+                  setKodeKelasInput(e.target.value);
+                  if (errorKelas) setErrorKelas("");
+                }}
+                placeholder="Contoh: HAKI-9A"
+                className={`w-full bg-slate-900 border rounded-2xl px-4 py-3.5 text-white font-mono uppercase tracking-widest text-center text-lg focus:outline-none transition-all ${
+                  errorKelas 
+                    ? "border-red-500 bg-red-950/20 focus:ring-2 focus:ring-red-500" 
+                    : "border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                }`}
+              />
+              {errorKelas && (
+                <p className="text-red-400 text-xs mt-2 font-medium flex items-center gap-1">
+                  <span>⚠️</span> {errorKelas}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isValidatingKelas || !kodeKelasInput.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg hover:-translate-y-0.5 text-sm flex items-center justify-center gap-2"
+            >
+              {isValidatingKelas ? "Memverifikasi..." : "Lanjut ke Pemilihan Kelompok →"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // TAHAP 2: PEMILIHAN KELOMPOK (DENGAN INDIKATOR MULTI-DEVICE ROOM AKTIF)
+  if (!kelompokAktif) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
+        <button 
+          onClick={() => {
+            setKodeKelasAktif(null);
+            setNamaKelas("");
+            setKodeKelasInput("");
+            setActiveGroups([]);
+          }}
+          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
+        >
+          <span>←</span> Ganti Kelas
+        </button>
+
+        <div className="text-center mb-8 mt-12 md:mt-0">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
+            <span>Sesi Kelas: {namaKelas} ({kodeKelasAktif})</span>
+            <span>•</span>
+            <span className="text-amber-400 font-extrabold flex items-center gap-1">
+              <span>⏱️</span> {durasiMenit} Menit
+            </span>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+            Identifikasi Tim Detektif
+          </h1>
+          <p className="text-slate-400 text-sm md:text-base max-w-md mx-auto">
+            Pilih nomor kelompok Anda. Jika rekan tim sudah membuka room di laptop/HP, Anda akan otomatis bergabung ke room yang sama!
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-3xl w-full">
+          {[1, 2, 3, 4, 5, 6].map((num) => {
+            const isRoomActive = activeGroups.includes(num);
+            return (
+              <button 
+                key={num}
+                onClick={() => handlePilihKelompok(num)}
+                disabled={isJoiningRoom}
+                className="relative py-7 px-5 bg-slate-800 border-2 border-slate-700 rounded-3xl shadow-lg hover:border-blue-500 hover:bg-slate-800/80 hover:-translate-y-2 transition-all duration-300 text-xl font-bold text-slate-200 flex flex-col items-center gap-2 disabled:opacity-50 group cursor-pointer"
+              >
+                {isRoomActive && (
+                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Room Aktif
+                  </span>
+                )}
+                <span className="text-4xl drop-shadow-md group-hover:scale-110 transition-transform">🕵️‍♂️</span>
+                <span className="text-lg md:text-xl font-black text-white">Kelompok {num}</span>
+                <span className="text-[11px] font-normal text-slate-400">
+                  {isRoomActive ? "Rekan tim sudah di dalam → Gabung" : "Klik untuk membuka room"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {isJoiningRoom && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-slate-700 p-6 rounded-2xl flex items-center gap-3 shadow-xl">
+              <span className="w-4 h-4 rounded-full border-2 border-blue-400 border-t-transparent animate-spin"></span>
+              <span className="text-sm font-semibold text-white">Menghubungkan ke Room Kelompok...</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // TAHAP 3: REGISTRASI TIM (BAGIAN I: IDENTITAS & PERAN ANGGOTA - JIKA BELUM DIDAFTARKAN DEVICE PERTAMA)
+  if (kelompokAktif && !isIdentitasLengkap) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
+        <button 
+          onClick={() => setKelompokAktif(null)}
+          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
+        >
+          <span>←</span> Kembali Pilih Kelompok
+        </button>
+
+        <div className="bg-slate-800 p-6 md:p-8 rounded-3xl shadow-xl border border-slate-700 max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-width:thin]">
+          <div className="text-center mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-2 uppercase tracking-wider">
+              <span>Kelas {namaKelas} • Kelompok {kelompokAktif}</span>
+              <span>•</span>
+              <span className="text-amber-400 flex items-center gap-1 font-bold">
+                <span>⏱️</span> {durasiMenit} Menit
+              </span>
+            </div>
+            <div className="text-4xl mb-1.5">👥</div>
+            <h2 className="text-xl md:text-2xl font-bold text-white mb-1">BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
+            <p className="text-slate-400 text-xs">Masukkan nama anggota tim sesuai peran detektif masing-masing.</p>
+          </div>
+
+          {/* Banner Tips Multi-Device */}
+          <div className="mb-4 p-3 bg-blue-950/40 border border-blue-500/30 rounded-2xl text-[11px] text-blue-300 flex items-start gap-2">
+            <span className="text-base shrink-0">💡</span>
+            <span>
+              <strong>Tips Multi-Device:</strong> Cukup 1 siswa di laptop mendaftarkan nama tim ini. Perangkat rekan tim lain (HP Pencatat & HP Analis) akan otomatis terhubung ke room ini!
+            </span>
+          </div>
+          
+          <form onSubmit={handleMulaiInvestigasi} className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-blue-300 mb-1">
+                1. Anggota 1 (Interregator Chat AI) <span className="text-red-400">*</span>
+              </label>
+              <input 
+                type="text"
+                required
+                value={anggotaInterregator}
+                onChange={(e) => setAnggotaInterregator(e.target.value)}
+                placeholder="Nama siswa yang bertugas chat interogasi dengan AI di laptop"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-emerald-300 mb-1">
+                2. Anggota 2 (Pencatat Bukti 1)
+              </label>
+              <input 
+                type="text"
+                value={anggotaPencatat1}
+                onChange={(e) => setAnggotaPencatat1(e.target.value)}
+                placeholder="Nama siswa pencatat petunjuk kunci 1 (di HP/Laptop)"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-teal-300 mb-1">
+                3. Anggota 3 (Pencatat Bukti 2)
+              </label>
+              <input 
+                type="text"
+                value={anggotaPencatat2}
+                onChange={(e) => setAnggotaPencatat2(e.target.value)}
+                placeholder="Nama siswa pencatat petunjuk kunci 2"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-teal-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-purple-300 mb-1">
+                4. Anggota 4 (Analis HAKI 1)
+              </label>
+              <input 
+                type="text"
+                value={anggotaAnalis1}
+                onChange={(e) => setAnggotaAnalis1(e.target.value)}
+                placeholder="Nama siswa analis pelanggaran hukum/etika 1 (di HP/Laptop)"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-indigo-300 mb-1">
+                5. Anggota 5 (Analis HAKI 2)
+              </label>
+              <input 
+                type="text"
+                value={anggotaAnalis2}
+                onChange={(e) => setAnggotaAnalis2(e.target.value)}
+                placeholder="Nama siswa analis pelanggaran hukum/etika 2"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-amber-300 mb-1">
+                6. Anggota 6 (Juru Bicara Presentasi / Opsional jika 5 anak)
+              </label>
+              <input 
+                type="text"
+                value={anggotaJuruBicara}
+                onChange={(e) => setAnggotaJuruBicara(e.target.value)}
+                placeholder="Nama siswa juru bicara saat presentasi kelas"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg mt-3 text-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Mulai Investigasi & Buka Room Kolaborasi 🔍
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 overflow-hidden">
+      {/* Toast Notifikasi Multi-Device Room */}
+      {roomToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
+          <span>🟢</span>
+          <span>{roomToast}</span>
+        </div>
+      )}
+
       {/* Top Navbar */}
       <header className="h-14 bg-slate-800 border-b border-slate-700 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2">
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <img src="/logo.png" alt="Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
           <div>
             <h1 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 sm:gap-2">
@@ -694,11 +1294,19 @@ export default function InvestigasiPage() {
               <span className="px-2 py-0.5 bg-blue-600/30 text-blue-400 text-[10px] rounded-full border border-blue-500/30 font-mono">
                 {namaKelas} • Kel {kelompokAktif}
               </span>
+              {/* Badge Multi-Device Room */}
+              <span 
+                className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold rounded-full" 
+                title={isRealtimeConnected ? "Realtime WebSocket Terhubung: Kolaborasi Multi-Device Aktif" : "Kolaborasi Multi-Device Aktif (Auto-Sync Polling)"}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Multi-Device Room
+              </span>
             </h1>
           </div>
         </div>
 
-        {/* Countdown Timer Badge Interaktif */}
+        {/* Countdown Timer Badge Interaktif Terpusat */}
         <div 
           className={`px-2.5 sm:px-3 py-1 rounded-xl border flex items-center gap-2 text-xs font-mono font-bold transition-all shadow-sm ${
             isSubmitted
@@ -709,7 +1317,7 @@ export default function InvestigasiPage() {
               ? "bg-amber-950/90 border-amber-500 text-amber-300 animate-pulse"
               : "bg-slate-900 border-slate-700 text-slate-200"
           }`} 
-          title={`Batas waktu investigasi kelas: ${durasiMenit} menit (Diatur oleh Guru)`}
+          title={`Batas waktu investigasi kelas: ${durasiMenit} menit (Tersinkronisasi ke seluruh perangkat tim)`}
         >
           <span className="text-sm">
             {isSubmitted ? "✅" : sisaDetik <= 0 ? "🚨" : sisaDetik <= 300 ? "⏳" : "⏱️"}
@@ -728,7 +1336,7 @@ export default function InvestigasiPage() {
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => setShowKasusModal(true)}
-            className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-600 flex items-center gap-1 font-semibold"
+            className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-600 flex items-center gap-1 font-semibold cursor-pointer"
             title="Lihat Rincian Berkas Kasus"
           >
             <span>📁</span> <span className="hidden sm:inline">Kasus #{kasusAktif.id}</span>
@@ -755,8 +1363,11 @@ export default function InvestigasiPage() {
           </div>
 
           <button
-            onClick={() => setKelompokAktif(null)}
-            className="text-xs text-slate-400 hover:text-white px-1.5 py-1"
+            onClick={() => {
+              setKelompokAktif(null);
+              setIsIdentitasLengkap(false);
+            }}
+            className="text-xs text-slate-400 hover:text-white px-1.5 py-1 cursor-pointer"
             title="Ganti Kelompok"
           >
             Keluar
@@ -773,18 +1384,17 @@ export default function InvestigasiPage() {
           </div>
           <button
             onClick={() => setActiveTabMobile("lembar")}
-            className="px-3 py-1 bg-white text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-black shadow-sm shrink-0"
+            className="px-3 py-1 bg-white text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-black shadow-sm shrink-0 cursor-pointer"
           >
             Buka LKPD & Kirim Final →
           </button>
         </div>
       )}
 
-
       {/* Main Container Dual Layout */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* PANEL KIRI: INTEROGASI AI (CHAT) */}
+        {/* PANEL KIRI: INTEROGASI AI (CHAT) - Ideal untuk Siswa Berperan Interregator di Laptop */}
         <div className={`w-full lg:w-1/2 flex flex-col bg-slate-900 border-r border-slate-800 h-full ${
           activeTabMobile === "chat" ? "flex" : "hidden lg:flex"
         }`}>
@@ -792,9 +1402,12 @@ export default function InvestigasiPage() {
           <div className="p-3 bg-slate-850 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="font-semibold text-slate-300">Saksi Mata Digital (AI) Terhubung</span>
+              <span className="font-semibold text-slate-300">Saksi Mata Digital (AI)</span>
+              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700 hidden sm:inline">
+                Laptop Interregator
+              </span>
             </div>
-            <span className="text-[11px] text-slate-500">Ajukan pertanyaan analitis untuk menggali clues</span>
+            <span className="text-[11px] text-slate-500">Hasil chat tersinkron otomatis ke HP tim</span>
           </div>
 
           {/* Chat Bubble Scroll Area */}
@@ -853,14 +1466,14 @@ export default function InvestigasiPage() {
             <button
               type="submit"
               disabled={isLoading || !inputUser.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-xs md:text-sm shrink-0 flex items-center gap-1.5"
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-xs md:text-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
             >
               <span>Tanya</span> 🔍
             </button>
           </form>
         </div>
 
-        {/* PANEL KANAN: LEMBAR INVESTIGASI (LKPD FORM) */}
+        {/* PANEL KANAN: LEMBAR INVESTIGASI (LKPD FORM) - Multi-Device Friendly dengan Quick Jump Navigation */}
         <div className={`w-full lg:w-1/2 flex flex-col bg-slate-950 h-full overflow-hidden ${
           activeTabMobile === "lembar" ? "flex" : "hidden lg:flex"
         }`}>
@@ -891,6 +1504,39 @@ export default function InvestigasiPage() {
             </div>
           </div>
 
+          {/* Quick-Jump Navigation Bar (Memudahkan Siswa di HP Melompat Langsung ke Tugasnya) */}
+          <div className="bg-slate-900/90 border-b border-slate-800 px-3 py-2 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] shrink-0">
+            <span className="text-[10px] text-slate-400 font-bold shrink-0 hidden sm:inline">Lompat Cepat:</span>
+            <button 
+              type="button"
+              onClick={() => sectionBuktiRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <span>🔍</span> Bukti (Pencatat)
+            </button>
+            <button 
+              type="button"
+              onClick={() => sectionAnalisisRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <span>⚖️</span> Analisis UU (Analis)
+            </button>
+            <button 
+              type="button"
+              onClick={() => sectionSolusiRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <span>💡</span> Solusi & Mitigasi
+            </button>
+            <button 
+              type="button"
+              onClick={() => sectionRefleksiRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <span>💭</span> Refleksi
+            </button>
+          </div>
+
           {/* Form Konten LKPD (Scrollable) */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 [scrollbar-width:thin] text-slate-200 text-xs">
             
@@ -900,7 +1546,7 @@ export default function InvestigasiPage() {
                 BERKAS INVESTIGASI TIM DETEKTIF HAKI
               </h2>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Isi lembar kerja ini berdasarkan hasil interogasi saksi digital dan diskusi bersama tim.
+                Kolaborasi multi-device aktif: Setiap catatan dan analisis tersimpan otomatis tanpa saling menimpa.
               </p>
             </div>
 
@@ -942,15 +1588,20 @@ export default function InvestigasiPage() {
               </div>
             </div>
 
-            {/* BAGIAN II: CATATAN BUKTI INVESTIGASI */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5">
-              <div>
-                <h3 className="font-bold text-xs text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span>🔍</span> BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG)
-                </h3>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Instruksi: Tuliskan petunjuk-petunjuk kunci (clues) yang kamu dapatkan setelah menginterogasi "Saksi Mata Digital" (AI) pada Tab Interogasi!
-                </p>
+            {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (Ideal untuk HP Pencatat Bukti 1 & 2) */}
+            <div ref={sectionBuktiRef} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5 scroll-mt-14">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-xs text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🔍</span> BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG)
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Instruksi: Tuliskan petunjuk kunci yang didapatkan dari Saksi AI.
+                  </p>
+                </div>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium shrink-0">
+                  HP Pencatat Bukti
+                </span>
               </div>
 
               <div className="space-y-3">
@@ -961,6 +1612,8 @@ export default function InvestigasiPage() {
                   <textarea
                     rows={2}
                     value={petunjuk1}
+                    onFocus={() => { activeFieldRef.current = "petunjuk1"; }}
+                    onBlur={() => { if (activeFieldRef.current === "petunjuk1") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk1(e.target.value)}
                     placeholder="Contoh: Saksi menyebutkan pelaku mengunduh video lalu memotong watermark..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-emerald-500 transition-all resize-none"
@@ -974,6 +1627,8 @@ export default function InvestigasiPage() {
                   <textarea
                     rows={2}
                     value={petunjuk2}
+                    onFocus={() => { activeFieldRef.current = "petunjuk2"; }}
+                    onBlur={() => { if (activeFieldRef.current === "petunjuk2") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk2(e.target.value)}
                     placeholder="Contoh: Karya berupa konten video sains eksperimen milik channel YouTube sekolah..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-emerald-500 transition-all resize-none"
@@ -987,6 +1642,8 @@ export default function InvestigasiPage() {
                   <textarea
                     rows={2}
                     value={petunjuk3}
+                    onFocus={() => { activeFieldRef.current = "petunjuk3"; }}
+                    onBlur={() => { if (activeFieldRef.current === "petunjuk3") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk3(e.target.value)}
                     placeholder="Contoh: Karya asli memiliki hak cipta terdaftar dan tidak diizinkan untuk dikomersialkan tanpa izin..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-emerald-500 transition-all resize-none"
@@ -995,15 +1652,20 @@ export default function InvestigasiPage() {
               </div>
             </div>
 
-            {/* BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4) */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5">
-              <div>
-                <h3 className="font-bold text-xs text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span>⚖️</span> BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4)
-                </h3>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Jawablah pertanyaan analisis berikut berdasarkan bukti-bukti yang telah kalian himpun:
-                </p>
+            {/* BAGIAN III: LEMBAR ANALISIS HAKI (Ideal untuk HP Analis HAKI 1 & 2) */}
+            <div ref={sectionAnalisisRef} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5 scroll-mt-14">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-xs text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>⚖️</span> BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4)
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Jawablah pertanyaan analisis pasal dan jenis pelanggaran etika/hukum berdasarkan bukti.
+                  </p>
+                </div>
+                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-medium shrink-0">
+                  HP Analis HAKI
+                </span>
               </div>
 
               <div className="space-y-3">
@@ -1014,6 +1676,8 @@ export default function InvestigasiPage() {
                   <textarea
                     rows={2}
                     value={analisisTindakan}
+                    onFocus={() => { activeFieldRef.current = "analisisTindakan"; }}
+                    onBlur={() => { if (activeFieldRef.current === "analisisTindakan") activeFieldRef.current = null; }}
                     onChange={(e) => setAnalisisTindakan(e.target.value)}
                     placeholder="Jelaskan tindakan konkrit pelaku yang melanggar aturan..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-purple-500 transition-all resize-none"
@@ -1035,7 +1699,7 @@ export default function InvestigasiPage() {
                             setJenisHaki(prev => prev ? `${prev}, ${tag}` : tag);
                           }
                         }}
-                        className="text-[10px] bg-slate-800 hover:bg-purple-900/40 text-purple-300 border border-purple-500/30 px-2.5 py-1 rounded-lg transition-all"
+                        className="text-[10px] bg-slate-800 hover:bg-purple-900/40 text-purple-300 border border-purple-500/30 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                       >
                         + {tag}
                       </button>
@@ -1044,6 +1708,8 @@ export default function InvestigasiPage() {
                   <textarea
                     rows={2}
                     value={jenisHaki}
+                    onFocus={() => { activeFieldRef.current = "jenisHaki"; }}
+                    onBlur={() => { if (activeFieldRef.current === "jenisHaki") activeFieldRef.current = null; }}
                     onChange={(e) => setJenisHaki(e.target.value)}
                     placeholder="Pilih & Jelaskan: Hak Cipta, Lisensi CC, Hak Moral, atau Hak Ekonomi yang dilanggar..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-purple-500 transition-all resize-none"
@@ -1057,6 +1723,8 @@ export default function InvestigasiPage() {
                   <textarea
                     rows={2}
                     value={analisisKerugian}
+                    onFocus={() => { activeFieldRef.current = "analisisKerugian"; }}
+                    onBlur={() => { if (activeFieldRef.current === "analisisKerugian") activeFieldRef.current = null; }}
                     onChange={(e) => setAnalisisKerugian(e.target.value)}
                     placeholder="Uraikan siapa yang dirugikan serta bentuk kerugian materil/imateril yang dialami..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-purple-500 transition-all resize-none"
@@ -1066,7 +1734,7 @@ export default function InvestigasiPage() {
             </div>
 
             {/* BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI (HOTS - C5) */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5">
+            <div ref={sectionSolusiRef} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5 scroll-mt-14">
               <div>
                 <h3 className="font-bold text-xs text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                   <span>🛡️</span> BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI KASUS (HOTS - C5)
@@ -1084,6 +1752,8 @@ export default function InvestigasiPage() {
                   <textarea
                     rows={2}
                     value={solusiAdil}
+                    onFocus={() => { activeFieldRef.current = "solusiAdil"; }}
+                    onBlur={() => { if (activeFieldRef.current === "solusiAdil") activeFieldRef.current = null; }}
                     onChange={(e) => setSolusiAdil(e.target.value)}
                     placeholder="Contoh: Takedown konten bajakan, kompensasi ganti rugi, permohonan maaf terbuka..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-amber-500 transition-all resize-none"
@@ -1097,6 +1767,8 @@ export default function InvestigasiPage() {
                   <textarea
                     rows={2}
                     value={aturanEtis}
+                    onFocus={() => { activeFieldRef.current = "aturanEtis"; }}
+                    onBlur={() => { if (activeFieldRef.current === "aturanEtis") activeFieldRef.current = null; }}
                     onChange={(e) => setAturanEtis(e.target.value)}
                     placeholder="Contoh: Selalu mencantumkan atribusi sumber, membeli lisensi legal, meminta izin tertulis..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-amber-500 transition-all resize-none"
@@ -1106,7 +1778,7 @@ export default function InvestigasiPage() {
             </div>
 
             {/* BAGIAN V: JURNAL REFLEKSI DIRI */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div ref={sectionRefleksiRef} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3 scroll-mt-14">
               <h3 className="font-bold text-xs text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
                 <span>💭</span> BAGIAN V: JURNAL REFLEKSI DIRI
               </h3>
@@ -1117,6 +1789,8 @@ export default function InvestigasiPage() {
                 <textarea
                   rows={2}
                   value={refleksiDiri}
+                  onFocus={() => { activeFieldRef.current = "refleksiDiri"; }}
+                  onBlur={() => { if (activeFieldRef.current === "refleksiDiri") activeFieldRef.current = null; }}
                   onChange={(e) => setRefleksiDiri(e.target.value)}
                   placeholder="Tuliskan pemahaman atau kesadaran baru yang kamu peroleh dari misi investigasi ini..."
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-rose-500 transition-all resize-none"
@@ -1134,7 +1808,7 @@ export default function InvestigasiPage() {
                 <span>🚀</span> {isSubmitted ? "Kirim Ulang Pembaruan LKPD" : "Kirim Final Berkas Investigasi ke Guru"}
               </button>
               <p className="text-[10px] text-slate-500 text-center mt-2 italic">
-                Setiap ketikan Anda tersimpan otomatis di database. Klik tombol di atas jika sudah yakin untuk mengirim laporan akhir.
+                Setiap ketikan Anda tersimpan otomatis di database room kelompok. Klik tombol di atas jika sudah yakin untuk mengirim laporan akhir.
               </p>
             </div>
 
@@ -1151,7 +1825,7 @@ export default function InvestigasiPage() {
               <span className="px-2.5 py-1 bg-blue-600/20 text-blue-400 rounded-full text-xs font-bold border border-blue-500/30">
                 Kasus #{kasusAktif.id}
               </span>
-              <button onClick={() => setShowKasusModal(false)} className="text-slate-400 hover:text-white text-lg font-bold">
+              <button onClick={() => setShowKasusModal(false)} className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer">
                 ✕
               </button>
             </div>
@@ -1161,7 +1835,7 @@ export default function InvestigasiPage() {
             </p>
             <button
               onClick={() => setShowKasusModal(false)}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-all"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-all cursor-pointer"
             >
               Lanjutkan Investigasi
             </button>
@@ -1204,4 +1878,3 @@ export default function InvestigasiPage() {
     </div>
   );
 }
-
