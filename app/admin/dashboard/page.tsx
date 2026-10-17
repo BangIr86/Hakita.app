@@ -1737,8 +1737,8 @@ export default function AdminDashboard() {
                     <p className="text-gray-600">Guru Pembimbing / Penilai</p>
                     <p className="font-bold">Mahasiswa PPG</p>
                     <div className="h-10"></div>
-                    <p className="font-bold underline">(......................................................)</p>
-                    <p className="text-[9px] text-gray-600">NIP / NIM: .......................................</p>
+                    <p className="font-bold underline">(M. KHOIRUL IBAD, S.Kom.)</p>
+                    <p className="text-[9px] text-gray-600">NIM: 253153744038</p>
                   </div>
                 </div>
               </div>
