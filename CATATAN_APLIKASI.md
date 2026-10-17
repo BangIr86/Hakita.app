@@ -191,16 +191,19 @@ hakita-app/
 ├── app/
 │   ├── admin/
 │   │   ├── dashboard/
-│   │   │   └── page.tsx         # Dasbor pemantauan chat siswa oleh guru
+│   │   │   └── page.tsx         # Dasbor pemantauan LKPD & Chat (Dual View Asli/AI, Cetak PDF, Excel)
 │   │   └── page.tsx             # Halaman login guru (Validasi regex PPG-angka)
 │   ├── api/
-│   │   └── chat/
-│   │       └── route.ts         # Endpoint integrasi Google Gemini (SSE Stream)
+│   │   ├── chat/
+│   │   │   └── route.ts         # Endpoint integrasi Saksi Mata AI Gemini (SSE Stream + multi-model fallback)
+│   │   └── evaluasi/
+│   │       └── route.ts         # Endpoint Asesor AI PPG (Evaluasi LKPD, UU No. 28/2014 & Rubrik HOTS)
 │   ├── investigasi/
-│   │   └── page.tsx             # Halaman inti siswa (Pilih Kelompok, Registrasi, Chat UI)
+│   │   └── page.tsx             # Halaman inti siswa (6 Peran Detektif, 5 Bagian LKPD, Chat Saksi AI)
 │   ├── layout.tsx               # Root layout aplikasi
 │   └── page.tsx                 # Landing page / Halaman beranda
 ├── lib/
+│   ├── constants.ts             # Data statis daftar kasus investigasi & kode kelas default
 │   └── supabase.ts              # Inisialisasi Supabase client
 ├── public/
 │   └── logo.png                 # File logo resmi aplikasi
@@ -220,7 +223,24 @@ hakita-app/
   * Tombol *"📊 Unduh Excel"* per kelompok (mengunduh berkas lengkap kelompok aktif).
   * Tombol *"📊 Ekspor Excel (Semua Tim)"* di sidebar guru untuk merekap seluruh kelompok dalam satu kelas sekaligus.
 
+### ✅ Tahap 2: Rubrik Evaluasi Berbasis AI (Dual View Guru: Hasil Asli & Evaluasi AI) [SELESAI]
+* **Endpoint API Evaluasi (`/api/evaluasi`)**:
+  * Menggunakan SDK Google Generative AI dengan arsitektur multi-model fallback cerdas (`gemini-3.5-flash-lite` -> `gemini-flash-lite-latest`).
+  * Mengevaluasi berkas investigasi siswa secara objektif berdasarkan **UU No. 28 Tahun 2014 tentang Hak Cipta** dan Rubrik HOTS PPG:
+    1. Kelengkapan Bukti Investigasi (Maks 25)
+    2. Analisis Pelanggaran HOTS C4 (Maks 35)
+    3. Rekomendasi Solusi & Mitigasi HOTS C5 (Maks 25)
+    4. Jurnal Refleksi Diri (Maks 15)
+  * Menghasilkan Skor Total (0-100), Predikat (Sangat Baik / Baik / Cukup / Perlu Bimbingan), Ulasan Kesesuaian Hukum, Poin Kelebihan, Poin Catatan Kritis, dan Rekomendasi Umpan Balik Guru.
+* **Dual View & Split View di Dasbor Guru (`/admin/dashboard`)**:
+  * **1. Hasil Asli Siswa**: Menampilkan lembar kerja murni yang diisi siswa (Bagian I hingga V) tanpa intervensi.
+  * **2. Hasil Evaluasi AI**: Menampilkan *scorecard*, visualisasi progress bar 4 rubrik, ulasan hukum hak cipta, dan kartu umpan balik guru dengan tombol aksi *"✨ Jalankan Evaluasi AI"* / *"🔄 Evaluasi Ulang"*.
+  * **3. Tampilan Berdampingan (Split View)**: Guru dapat menyandingkan berkas asli siswa dan hasil asesmen AI secara horizontal berdampingan untuk validasi cepat.
+* **Integrasi PDF Cetak & Rekap Excel**:
+  * Dokumen cetak PDF menyertakan bagian resmi evaluasi AI serta otomatis mengisi skor pada kotak pengesahan guru.
+  * Rekap Excel memuat 4 kolom tambahan: Skor AI, Predikat AI, Ulasan Hukum UU 28/2014, dan Rekomendasi Umpan Balik.
+
 ### 🔜 Rencana Tahap Selanjutnya:
-1. **Tahap 2: Rubrik Evaluasi Berbasis AI**: Menambahkan fitur agar AI dapat menganalisis dan memberikan feedback otomatis apakah bukti C4 dan solusi C5 siswa sudah tepat sasaran sesuai UU Hak Cipta Indonesia (UU No. 28 Tahun 2014).
-2. **Tahap 3: Timer / Batas Waktu Investigasi**: Menambahkan *countdown timer* selama interogasi agar suasana investigasi terasa lebih menantang dan melatih manajemen waktu siswa.
+1. **Tahap 3: Timer / Batas Waktu Investigasi**: Menambahkan *countdown timer* selama interogasi agar suasana investigasi terasa lebih menantang dan melatih manajemen waktu siswa.
+
 

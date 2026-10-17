@@ -2,29 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { DEFAULT_KELAS_LIST } from "@/lib/constants";
+import { DEFAULT_KELAS_LIST, DAFTAR_KASUS } from "@/lib/constants";
 
-// Data Studi Kasus
-const daftarKasus = [
-  { 
-    id: 1, 
-    judul: "Pembajakan Game 'CyberQuest'", 
-    deskripsi: "Game indie buatan siswa SMK lokal mendadak viral, namun sayangnya muncul di situs download bajakan luar negeri hanya dalam waktu seminggu setelah rilis. Modus operandi pelaku belum diketahui, namun ada jejak digital ke sebuah forum hacker anonim.",
-    kelompok: [1, 4] 
-  },
-  { 
-    id: 2, 
-    judul: "Plagiarisme Desain Maskot", 
-    deskripsi: "Sebuah kafe boba hits di kota diduga keras menggunakan desain maskot yang menjiplak karya seniman digital dari platform DeviantArt. Pemilik kafe mengklaim ia membeli desain tersebut dari seorang 'freelancer' murah di internet.",
-    kelompok: [2, 5] 
-  },
-  { 
-    id: 3, 
-    judul: "Pencurian Konten Video (Re-uploader)", 
-    deskripsi: "Video eksperimen sains edukasi milik channel YouTube sekolah diunduh, dipotong sedikit untuk menghilangkan watermark, lalu diunggah ulang ke TikTok dan mendapat jutaan views serta cuan (monetisasi). Siapa pelakunya?",
-    kelompok: [3, 6] 
-  }
-];
+const daftarKasus = DAFTAR_KASUS;
+
 
 export default function InvestigasiPage() {
   // Sesi Kelas
@@ -69,6 +50,7 @@ export default function InvestigasiPage() {
 
   // Bagian V: Refleksi Diri
   const [refleksiDiri, setRefleksiDiri] = useState("");
+  const [evaluasiAi, setEvaluasiAi] = useState<any>(null);
 
   // Status Form LKPD
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -183,6 +165,9 @@ export default function InvestigasiPage() {
               setSolusiAdil(parsed.solusi || "");
               setAturanEtis(parsed.aturan || "");
               setRefleksiDiri(parsed.refleksi || "");
+              if (parsed.evaluasi_ai) {
+                setEvaluasiAi(parsed.evaluasi_ai);
+              }
             } catch {
               setSolusiAdil(data.solusi_rekomendasi);
             }
@@ -226,7 +211,8 @@ export default function InvestigasiPage() {
       solusi: solusiAdil,
       aturan: aturanEtis,
       refleksi: refleksiDiri,
-      nama_anggota: getGabunganNamaAnggota()
+      nama_anggota: getGabunganNamaAnggota(),
+      ...(evaluasiAi ? { evaluasi_ai: evaluasiAi } : {})
     });
 
     try {

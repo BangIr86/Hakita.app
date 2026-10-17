@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { DEFAULT_KELAS_LIST } from "@/lib/constants";
+import { DEFAULT_KELAS_LIST, DAFTAR_KASUS } from "@/lib/constants";
 import Link from "next/link";
 
 type ChatRecord = {
@@ -14,6 +14,23 @@ type ChatRecord = {
   role: string;
   content: string;
   created_at: string;
+};
+
+// Skema Hasil Evaluasi AI (Tahap 2)
+export type EvaluasiAI = {
+  skorTotal: number;
+  predikat: string;
+  kategori: {
+    kelengkapanBukti: { skor: number; max: number; catatan: string };
+    analisisPelanggaranC4: { skor: number; max: number; catatan: string };
+    solusiMitigasiC5: { skor: number; max: number; catatan: string };
+    refleksiDiri: { skor: number; max: number; catatan: string };
+  };
+  analisisHukum: string;
+  kelebihan: string[];
+  kekurangan: string[];
+  rekomendasiGuru: string;
+  waktuEvaluasi?: string;
 };
 
 // Sesuai skema tabel lkpd_reports
@@ -58,9 +75,22 @@ const parseAnalisis = (raw: string) => {
 
 const parseSolusi = (raw: string) => {
   try {
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return {
+      solusi: parsed.solusi || (typeof raw === "string" && !raw.startsWith("{") ? raw : ""),
+      aturan: parsed.aturan || "",
+      refleksi: parsed.refleksi || "",
+      nama_anggota: parsed.nama_anggota || "",
+      evaluasi_ai: (parsed.evaluasi_ai || null) as EvaluasiAI | null
+    };
   } catch {
-    return { solusi: raw, aturan: "", refleksi: "" };
+    return {
+      solusi: raw,
+      aturan: "",
+      refleksi: "",
+      nama_anggota: "",
+      evaluasi_ai: null
+    };
   }
 };
 
@@ -74,6 +104,12 @@ export default function AdminDashboard() {
   const [selectedKelompok, setSelectedKelompok] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"lkpd" | "chat">("lkpd");
 
+  // State Tahap 2: Dual View Mode & AI Assessment
+  const [lkpdViewMode, setLkpdViewMode] = useState<"siswa" | "evaluasi" | "split">("siswa");
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evalError, setEvalError] = useState("");
+  const [evalSuccess, setEvalSuccess] = useState("");
+
   // State Modals
   const [showKelasModal, setShowKelasModal] = useState(false);
   const [inputNamaKelasBaru, setInputNamaKelasBaru] = useState("");
@@ -83,6 +119,7 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+
       setError("Supabase belum dikonfigurasi. Silakan lengkapi .env.local dan jalankan script SQL.");
       setIsLoading(false);
       return;
@@ -236,7 +273,149 @@ export default function AdminDashboard() {
     window.print();
   };
 
-  // Handler Ekspor Rekap LKPD ke Excel (CSV)
+  // Helper Predikat Badge Styling
+  const getPredikatBadge = (predikat: string) => {
+    const p = predikat || "";
+    if (p.includes("Sangat Baik") || p.includes("A")) {
+      return { bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-300" };
+    }
+    if (p.includes("Baik") || p.includes("B")) {
+      return { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-300" };
+    }
+    if (p.includes("Cukup") || p.includes("C")) {
+      return { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-300" };
+    }
+    return { bg: "bg-rose-100", text: "text-rose-800", border: "border-rose-300" };
+  };
+
+  // Handler Asesmen & Rubrik Evaluasi AI (Tahap 2)
+  const handleRunEvaluation = async (targetKelompok: number) => {
+    const group = getGroupMetadata(targetKelompok);
+    const bukti = parseBukti(group.bukti_petunjuk);
+    const analisis = parseAnalisis(group.analisis_pelanggaran);
+    const solusi = parseSolusi(group.solusi_rekomendasi);
+
+    // Periksa apakah lembar kerja siswa sudah terisi
+    const hasAnyContent =
+      (bukti.p1 && bukti.p1.trim()) ||
+      (bukti.p2 && bukti.p2.trim()) ||
+      (bukti.p3 && bukti.p3.trim()) ||
+      (analisis.tindakan && analisis.tindakan.trim()) ||
+      (analisis.jenis && analisis.jenis.trim()) ||
+      (analisis.kerugian && analisis.kerugian.trim()) ||
+      (solusi.solusi && solusi.solusi.trim()) ||
+      (solusi.aturan && solusi.aturan.trim()) ||
+      (solusi.refleksi && solusi.refleksi.trim());
+
+    if (!hasAnyContent) {
+      alert("Kelompok ini belum mengisi Lembar Kerja Siswa (LKPD). Pastikan siswa telah mengisi bukti atau analisis terlebih dahulu sebelum dievaluasi AI.");
+      return;
+    }
+
+    setIsEvaluating(true);
+    setEvalError("");
+    setEvalSuccess("");
+
+    try {
+      const kasusItem = DAFTAR_KASUS.find((k) => k.id === group.kasus_id) || {
+        id: group.kasus_id,
+        judul: daftarKasusMap[group.kasus_id] || `Kasus #${group.kasus_id}`,
+        deskripsi: ""
+      };
+
+      const res = await fetch("/api/evaluasi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kasus: kasusItem,
+          kelas: group.kelas,
+          kelompok: targetKelompok,
+          namaAnggota: group.nama_anggota,
+          bukti,
+          analisis,
+          solusi
+        })
+      });
+
+      const evalData = await res.json();
+      if (!res.ok) {
+        throw new Error(evalData.error || evalData.detail || "Gagal mendapatkan evaluasi AI.");
+      }
+
+      // Siapkan payload baru untuk solusi_rekomendasi
+      let currentSolusiObj: any = {};
+      try {
+        currentSolusiObj = JSON.parse(group.solusi_rekomendasi);
+      } catch {
+        currentSolusiObj = {
+          solusi: solusi.solusi,
+          aturan: solusi.aturan,
+          refleksi: solusi.refleksi,
+          nama_anggota: group.nama_anggota
+        };
+      }
+
+      const updatedSolusiStr = JSON.stringify({
+        ...currentSolusiObj,
+        evaluasi_ai: evalData
+      });
+
+      // Update Supabase
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+        const { error: updateErr } = await supabase
+          .from("lkpd_reports")
+          .update({
+            solusi_rekomendasi: updatedSolusiStr,
+            updated_at: new Date().toISOString()
+          })
+          .eq("kelompok", targetKelompok)
+          .eq("kelas", group.kelas);
+
+        if (updateErr) {
+          console.warn("Gagal update evaluasi ke Supabase:", updateErr);
+        }
+      }
+
+      // Update local state lkpdList
+      setLkpdList((prev) => {
+        const index = prev.findIndex((l) => l.kelompok === targetKelompok && l.kelas.toUpperCase() === group.kelas.toUpperCase());
+        if (index >= 0) {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            solusi_rekomendasi: updatedSolusiStr,
+            updated_at: new Date().toISOString()
+          };
+          return updated;
+        } else {
+          return [
+            ...prev,
+            {
+              id: `eval-${Date.now()}`,
+              kelompok: targetKelompok,
+              kelas: group.kelas,
+              kasus_id: group.kasus_id,
+              bukti_petunjuk: group.bukti_petunjuk,
+              analisis_pelanggaran: group.analisis_pelanggaran,
+              solusi_rekomendasi: updatedSolusiStr,
+              is_submitted: group.is_submitted,
+              updated_at: new Date().toISOString()
+            }
+          ];
+        }
+      });
+
+      setEvalSuccess("Evaluasi AI berhasil diperbarui dan tersimpan!");
+      setLkpdViewMode("evaluasi");
+    } catch (err: any) {
+      console.error("Gagal menjalankan evaluasi:", err);
+      setEvalError(err.message || "Terjadi kesalahan saat memproses evaluasi AI.");
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  // Handler Ekspor Rekap LKPD ke Excel (CSV) dengan Data Asli & Evaluasi AI
   const exportToCsv = (groupsToExport: number[]) => {
     if (!groupsToExport || groupsToExport.length === 0) {
       alert("Tidak ada data kelompok untuk diekspor.");
@@ -251,6 +430,10 @@ export default function AdminDashboard() {
       "Judul Kasus",
       "Status LKPD",
       "Susunan Anggota & Peran Tim",
+      "Skor Evaluasi AI",
+      "Predikat AI",
+      "Ulasan Hukum UU 28/2014 (AI)",
+      "Rekomendasi Umpan Balik Guru (AI)",
       "Petunjuk 1 (Pelaku/Tindakan)",
       "Petunjuk 2 (Aset/Karya)",
       "Petunjuk 3 (Lisensi/Status Hukum)",
@@ -277,6 +460,10 @@ export default function AdminDashboard() {
         daftarKasusMap[meta.kasus_id] || `Kasus #${meta.kasus_id}`,
         meta.is_submitted ? "FINAL TERKIRIM" : "DRAFT",
         meta.nama_anggota,
+        s.evaluasi_ai ? `${s.evaluasi_ai.skorTotal}/100` : "Belum Dinilai",
+        s.evaluasi_ai?.predikat || "-",
+        s.evaluasi_ai?.analisisHukum || "-",
+        s.evaluasi_ai?.rekomendasiGuru || "-",
         b.p1,
         b.p2,
         b.p3,
@@ -304,6 +491,7 @@ export default function AdminDashboard() {
   };
 
   const selectedGroupData = selectedKelompok ? getGroupMetadata(selectedKelompok) : null;
+
 
   return (
     <>
@@ -551,7 +739,8 @@ export default function AdminDashboard() {
                 const solusi = parseSolusi(selectedGroupData.solusi_rekomendasi);
 
                 return (
-                  <div className="space-y-5 max-w-4xl mx-auto">
+                  <div className="space-y-5 max-w-5xl mx-auto">
+                    {/* Header LKPD Digital & Tombol Aksi */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm gap-3">
                       <div>
                         <div className="flex items-center gap-2">
@@ -594,113 +783,500 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">I</span>
-                          <h4 className="font-bold text-slate-800 text-sm">IDENTITAS TIM DETEKTIF</h4>
-                        </div>
-                        <span className="text-xs bg-blue-50 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full border border-blue-200">
-                          5–6 Anak/Kelompok
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl text-xs text-slate-700">
-                        <div><strong className="text-slate-500 block text-[11px]">Kelas:</strong> {selectedGroupData.kelas}</div>
-                        <div><strong className="text-slate-500 block text-[11px]">Nomor Kelompok:</strong> Kelompok {selectedKelompok}</div>
-                        <div><strong className="text-slate-500 block text-[11px]">Kasus:</strong> Kasus #{selectedGroupData.kasus_id}</div>
-                      </div>
-                      <div>
-                        <strong className="text-slate-500 block text-xs mb-1.5">Nama Anggota & Peran:</strong>
-                        <div className="text-xs text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium space-y-1">
-                          {selectedGroupData.nama_anggota ? (
-                            selectedGroupData.nama_anggota.split(", ").map((item, idx) => (
-                              <p key={idx}>{item}</p>
-                            ))
+                    {/* Sub-Tabs Switcher: 1. Hasil Asli Siswa vs 2. Hasil Evaluasi AI vs Tampilan Berdampingan */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setLkpdViewMode("siswa")}
+                          className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                            lkpdViewMode === "siswa"
+                              ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-200"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          <span>📝</span> 1. Hasil Asli Siswa
+                        </button>
+
+                        <button
+                          onClick={() => setLkpdViewMode("evaluasi")}
+                          className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                            lkpdViewMode === "evaluasi"
+                              ? "bg-white text-purple-700 shadow-sm ring-1 ring-slate-200"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          <span>🤖</span> 2. Hasil Evaluasi AI
+                          {solusi.evaluasi_ai ? (
+                            <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-extrabold ml-0.5 border border-purple-200">
+                              {solusi.evaluasi_ai.skorTotal}/100
+                            </span>
                           ) : (
-                            <p className="text-slate-400 italic">Belum ada nama anggota</p>
+                            <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold ml-0.5">
+                              Belum Dinilai
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => setLkpdViewMode("split")}
+                          className={`hidden md:flex px-3.5 py-2 rounded-xl text-xs font-bold transition-all items-center gap-1.5 ${
+                            lkpdViewMode === "split"
+                              ? "bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                          title="Bandingkan Jawaban Asli Siswa dan Hasil Asesmen AI secara berdampingan"
+                        >
+                          <span>⚖️</span> Tampilan Berdampingan
+                        </button>
+                      </div>
+
+                      {/* Tombol Cepat Jalankan Evaluasi AI */}
+                      <button
+                        onClick={() => handleRunEvaluation(selectedKelompok)}
+                        disabled={isEvaluating}
+                        className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+                        title="Jalankan asesmen otomatis berbasis UU No. 28/2014 & Rubrik HOTS"
+                      >
+                        {isEvaluating ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Menilai dengan AI...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>✨</span>
+                            <span>{solusi.evaluasi_ai ? "Evaluasi Ulang AI" : "Jalankan Evaluasi AI"}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Banner Notifikasi Evaluasi */}
+                    {evalSuccess && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-medium flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>✅</span>
+                          <span>{evalSuccess}</span>
+                        </div>
+                        <button onClick={() => setEvalSuccess("")} className="text-emerald-600 hover:text-emerald-900 font-bold text-sm px-1">✕</button>
+                      </div>
+                    )}
+                    {evalError && (
+                      <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs font-medium flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>⚠️</span>
+                          <span>{evalError}</span>
+                        </div>
+                        <button onClick={() => setEvalError("")} className="text-red-600 hover:text-red-900 font-bold text-sm px-1">✕</button>
+                      </div>
+                    )}
+
+                    {/* Helper: Komponen Tampilan 1 (Hasil Asli Siswa) */}
+                    {(() => {
+                      const renderHasilAsliContent = (isCompact = false) => (
+                        <div className="space-y-4">
+                          {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">I</span>
+                                <h4 className="font-bold text-slate-800 text-sm">IDENTITAS TIM DETEKTIF</h4>
+                              </div>
+                              <span className="text-xs bg-blue-50 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full border border-blue-200">
+                                5–6 Anak/Kelompok
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50 p-3 rounded-xl text-xs text-slate-700">
+                              <div><strong className="text-slate-500 block text-[11px]">Kelas:</strong> {selectedGroupData.kelas}</div>
+                              <div><strong className="text-slate-500 block text-[11px]">Nomor Kelompok:</strong> Kelompok {selectedKelompok}</div>
+                              <div><strong className="text-slate-500 block text-[11px]">Kasus:</strong> Kasus #{selectedGroupData.kasus_id} ({daftarKasusMap[selectedGroupData.kasus_id] || "Studi Kasus"})</div>
+                            </div>
+                            <div>
+                              <strong className="text-slate-500 block text-xs mb-1.5">Nama Anggota & Peran:</strong>
+                              <div className="text-xs text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium space-y-1">
+                                {selectedGroupData.nama_anggota ? (
+                                  selectedGroupData.nama_anggota.split(", ").map((item, idx) => (
+                                    <p key={idx}>{item}</p>
+                                  ))
+                                ) : (
+                                  <p className="text-slate-400 italic">Belum ada nama anggota</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG) */}
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                              <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">II</span>
+                              <h4 className="font-bold text-slate-800 text-sm">CATATAN BUKTI INVESTIGASI (EVIDENCE LOG FROM AI)</h4>
+                            </div>
+                            <div className="space-y-2.5 text-xs">
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <strong className="text-slate-600 block text-[11px] mb-1">1. Petunjuk #1 (Mengenai Pelaku/Tindakan):</strong>
+                                <p className="text-slate-800 whitespace-pre-wrap">{bukti.p1 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <strong className="text-slate-600 block text-[11px] mb-1">2. Petunjuk #2 (Mengenai Aset/Karya yang Dirugikan):</strong>
+                                <p className="text-slate-800 whitespace-pre-wrap">{bukti.p2 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <strong className="text-slate-600 block text-[11px] mb-1">3. Petunjuk #3 (Mengenai Lisensi/Status Hukum Karya):</strong>
+                                <p className="text-slate-800 whitespace-pre-wrap">{bukti.p3 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4) */}
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                              <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold">III</span>
+                              <h4 className="font-bold text-slate-800 text-sm">LEMBAR ANALISIS HAKI (HOTS - C4)</h4>
+                            </div>
+                            <div className="space-y-2.5 text-xs">
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <strong className="text-slate-600 block text-[11px] mb-1">1. Tindakan spesifik yang melanggar etika/hukum:</strong>
+                                <p className="text-slate-800 whitespace-pre-wrap">{analisis.tindakan || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <strong className="text-slate-600 block text-[11px] mb-1">2. Jenis Hak Kekayaan Intelektual / Lisensi yang dilanggar:</strong>
+                                <p className="text-slate-800 whitespace-pre-wrap">{analisis.jenis || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <strong className="text-slate-600 block text-[11px] mb-1">3. Pihak yang paling dirugikan dan dampak kerugiannya:</strong>
+                                <p className="text-slate-800 whitespace-pre-wrap">{analisis.kerugian || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI (HOTS - C5) */}
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                              <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">IV</span>
+                              <h4 className="font-bold text-slate-800 text-sm">REKOMENDASI SOLUSI & MITIGASI KASUS (HOTS - C5)</h4>
+                            </div>
+                            <div className="space-y-2.5 text-xs">
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <strong className="text-slate-600 block text-[11px] mb-1">1. Langkah penyelesaian adil untuk korban saat ini:</strong>
+                                <p className="text-slate-800 whitespace-pre-wrap">{solusi.solusi || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <strong className="text-slate-600 block text-[11px] mb-1">2. Aturan etis masa depan agar tidak melanggar HAKI:</strong>
+                                <p className="text-slate-800 whitespace-pre-wrap">{solusi.aturan || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* BAGIAN V: JURNAL REFLEKSI DIRI */}
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                              <span className="w-6 h-6 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center text-xs font-bold">V</span>
+                              <h4 className="font-bold text-slate-800 text-sm">JURNAL REFLEKSI DIRI</h4>
+                            </div>
+                            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
+                              <strong className="text-slate-600 block text-[11px] mb-1">• Hal paling berharga yang dipelajari tentang Hak Cipta:</strong>
+                              <p className="text-slate-800 whitespace-pre-wrap">{solusi.refleksi || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
+                            </div>
+                          </div>
+
+                          {!isCompact && (
+                            <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                              <div className="text-purple-900">
+                                <strong className="block font-bold">💡 Ingin menilai berkas ini secara komprehensif?</strong>
+                                <span className="text-purple-700">Jalankan asesmen otomatis AI berbasis UU Hak Cipta & Rubrik HOTS (C4 & C5).</span>
+                              </div>
+                              <button
+                                onClick={() => handleRunEvaluation(selectedKelompok)}
+                                disabled={isEvaluating}
+                                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0"
+                              >
+                                <span>🤖</span>
+                                <span>{solusi.evaluasi_ai ? "Buka Evaluasi AI" : "Mulai Evaluasi AI"}</span>
+                              </button>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    </div>
+                      );
 
-                    {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG) */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">II</span>
-                        <h4 className="font-bold text-slate-800 text-sm">CATATAN BUKTI INVESTIGASI (EVIDENCE LOG FROM AI)</h4>
-                      </div>
-                      <div className="space-y-2.5 text-xs">
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <strong className="text-slate-600 block text-[11px] mb-1">1. Petunjuk #1 (Mengenai Pelaku/Tindakan):</strong>
-                          <p className="text-slate-800 whitespace-pre-wrap">{bukti.p1 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <strong className="text-slate-600 block text-[11px] mb-1">2. Petunjuk #2 (Mengenai Aset/Karya yang Dirugikan):</strong>
-                          <p className="text-slate-800 whitespace-pre-wrap">{bukti.p2 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <strong className="text-slate-600 block text-[11px] mb-1">3. Petunjuk #3 (Mengenai Lisensi/Status Hukum Karya):</strong>
-                          <p className="text-slate-800 whitespace-pre-wrap">{bukti.p3 || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                        </div>
-                      </div>
-                    </div>
+                      {/* Helper: Komponen Tampilan 2 (Hasil Evaluasi AI) */}
+                      const renderHasilEvaluasiContent = () => {
+                        const evalData = solusi.evaluasi_ai;
 
-                    {/* BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4) */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold">III</span>
-                        <h4 className="font-bold text-slate-800 text-sm">LEMBAR ANALISIS HAKI (HOTS - C4)</h4>
-                      </div>
-                      <div className="space-y-2.5 text-xs">
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <strong className="text-slate-600 block text-[11px] mb-1">1. Tindakan spesifik yang melanggar etika/hukum:</strong>
-                          <p className="text-slate-800 whitespace-pre-wrap">{analisis.tindakan || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <strong className="text-slate-600 block text-[11px] mb-1">2. Jenis Hak Kekayaan Intelektual / Lisensi yang dilanggar:</strong>
-                          <p className="text-slate-800 whitespace-pre-wrap">{analisis.jenis || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <strong className="text-slate-600 block text-[11px] mb-1">3. Pihak yang paling dirugikan dan dampak kerugiannya:</strong>
-                          <p className="text-slate-800 whitespace-pre-wrap">{analisis.kerugian || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                        </div>
-                      </div>
-                    </div>
+                        if (!evalData) {
+                          return (
+                            <div className="bg-white border-2 border-dashed border-purple-200 rounded-3xl p-8 text-center max-w-xl mx-auto my-4 shadow-sm">
+                              <div className="w-16 h-16 rounded-3xl bg-purple-100 text-purple-700 flex items-center justify-center text-3xl mx-auto mb-4">
+                                🤖
+                              </div>
+                              <h3 className="text-base font-extrabold text-slate-800 mb-2">
+                                Belum Ada Evaluasi AI untuk Kelompok {selectedKelompok}
+                              </h3>
+                              <p className="text-xs text-slate-500 leading-relaxed mb-6">
+                                Asesor AI akan menganalisis jawaban siswa berdasarkan prinsip hukum <strong>UU No. 28 Tahun 2014 tentang Hak Cipta</strong> serta Rubrik Penilaian HOTS (Bukti 25, Analisis C4 35, Solusi C5 25, Refleksi 15).
+                              </p>
+                              <button
+                                onClick={() => handleRunEvaluation(selectedKelompok)}
+                                disabled={isEvaluating}
+                                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-lg shadow-purple-200 transition-all flex items-center justify-center gap-2 mx-auto cursor-pointer active:scale-95"
+                              >
+                                {isEvaluating ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    <span>Menganalisis Berkas Siswa...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>✨</span>
+                                    <span>Jalankan Evaluasi AI Sekarang</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        }
 
-                    {/* BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI (HOTS - C5) */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">IV</span>
-                        <h4 className="font-bold text-slate-800 text-sm">REKOMENDASI SOLUSI & MITIGASI KASUS (HOTS - C5)</h4>
-                      </div>
-                      <div className="space-y-2.5 text-xs">
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <strong className="text-slate-600 block text-[11px] mb-1">1. Langkah penyelesaian adil untuk korban saat ini:</strong>
-                          <p className="text-slate-800 whitespace-pre-wrap">{solusi.solusi || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <strong className="text-slate-600 block text-[11px] mb-1">2. Aturan etis masa depan agar tidak melanggar HAKI:</strong>
-                          <p className="text-slate-800 whitespace-pre-wrap">{solusi.aturan || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                        </div>
-                      </div>
-                    </div>
+                        const badgeStyle = getPredikatBadge(evalData.predikat);
 
-                    {/* BAGIAN V: JURNAL REFLEKSI DIRI */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <span className="w-6 h-6 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center text-xs font-bold">V</span>
-                        <h4 className="font-bold text-slate-800 text-sm">JURNAL REFLEKSI DIRI</h4>
-                      </div>
-                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
-                        <strong className="text-slate-600 block text-[11px] mb-1">• Hal paling berharga yang dipelajari tentang Hak Cipta:</strong>
-                        <p className="text-slate-800 whitespace-pre-wrap">{solusi.refleksi || <span className="text-slate-400 italic">(Belum diisi)</span>}</p>
-                      </div>
-                    </div>
+                        return (
+                          <div className="space-y-4">
+                            {/* Hero Card: Skor Total & Predikat */}
+                            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 rounded-3xl p-5 text-white shadow-md border border-indigo-900/40 relative overflow-hidden">
+                              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex flex-col items-center justify-center shrink-0">
+                                    <span className="text-2xl font-black text-amber-400">{evalData.skorTotal}</span>
+                                    <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">/ 100</span>
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">Asesmen AI PPG</span>
+                                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
+                                        {evalData.predikat}
+                                      </span>
+                                    </div>
+                                    <h4 className="text-base font-extrabold text-white">
+                                      Hasil Evaluasi Kelompok {selectedKelompok}
+                                    </h4>
+                                    {evalData.waktuEvaluasi && (
+                                      <p className="text-[11px] text-slate-400 mt-0.5">
+                                        Dievaluasi: {new Date(evalData.waktuEvaluasi).toLocaleString("id-ID")}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <button
+                                  onClick={() => handleRunEvaluation(selectedKelompok)}
+                                  disabled={isEvaluating}
+                                  className="self-start sm:self-auto px-3.5 py-2 bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                  title="Jalankan kembali asesmen AI"
+                                >
+                                  <span>🔄</span> Evaluasi Ulang
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 4 Rubrik Penilaian HOTS */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {/* 1. Kelengkapan Bukti (25) */}
+                              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <span>🔍</span> Bukti Investigasi
+                                  </span>
+                                  <span className="text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-lg">
+                                    {evalData.kategori?.kelengkapanBukti?.skor || 0} / {evalData.kategori?.kelengkapanBukti?.max || 25}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="bg-blue-600 h-1.5 rounded-full"
+                                    style={{ width: `${Math.min(100, ((evalData.kategori?.kelengkapanBukti?.skor || 0) / (evalData.kategori?.kelengkapanBukti?.max || 25)) * 100)}%` }}
+                                  ></div>
+                                </div>
+                                <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                  {evalData.kategori?.kelengkapanBukti?.catatan || "-"}
+                                </p>
+                              </div>
+
+                              {/* 2. Analisis Pelanggaran HOTS C4 (35) */}
+                              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <span>🧠</span> Analisis HAKI (HOTS C4)
+                                  </span>
+                                  <span className="text-xs font-black bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-lg">
+                                    {evalData.kategori?.analisisPelanggaranC4?.skor || 0} / {evalData.kategori?.analisisPelanggaranC4?.max || 35}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="bg-purple-600 h-1.5 rounded-full"
+                                    style={{ width: `${Math.min(100, ((evalData.kategori?.analisisPelanggaranC4?.skor || 0) / (evalData.kategori?.analisisPelanggaranC4?.max || 35)) * 100)}%` }}
+                                  ></div>
+                                </div>
+                                <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                  {evalData.kategori?.analisisPelanggaranC4?.catatan || "-"}
+                                </p>
+                              </div>
+
+                              {/* 3. Solusi & Mitigasi HOTS C5 (25) */}
+                              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <span>💡</span> Rekomendasi Solusi (HOTS C5)
+                                  </span>
+                                  <span className="text-xs font-black bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-lg">
+                                    {evalData.kategori?.solusiMitigasiC5?.skor || 0} / {evalData.kategori?.solusiMitigasiC5?.max || 25}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="bg-amber-500 h-1.5 rounded-full"
+                                    style={{ width: `${Math.min(100, ((evalData.kategori?.solusiMitigasiC5?.skor || 0) / (evalData.kategori?.solusiMitigasiC5?.max || 25)) * 100)}%` }}
+                                  ></div>
+                                </div>
+                                <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                  {evalData.kategori?.solusiMitigasiC5?.catatan || "-"}
+                                </p>
+                              </div>
+
+                              {/* 4. Refleksi Diri (15) */}
+                              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <span>📖</span> Jurnal Refleksi Diri
+                                  </span>
+                                  <span className="text-xs font-black bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-lg">
+                                    {evalData.kategori?.refleksiDiri?.skor || 0} / {evalData.kategori?.refleksiDiri?.max || 15}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="bg-rose-500 h-1.5 rounded-full"
+                                    style={{ width: `${Math.min(100, ((evalData.kategori?.refleksiDiri?.skor || 0) / (evalData.kategori?.refleksiDiri?.max || 15)) * 100)}%` }}
+                                  ></div>
+                                </div>
+                                <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                  {evalData.kategori?.refleksiDiri?.catatan || "-"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Ulasan Kesesuaian Hukum UU Hak Cipta No. 28 Tahun 2014 */}
+                            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-2">
+                              <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                <span className="text-base">⚖️</span>
+                                <h4 className="font-bold text-slate-800 text-sm">
+                                  Ulasan Kesesuaian Hukum (UU No. 28 Tahun 2014 tentang Hak Cipta)
+                                </h4>
+                              </div>
+                              <p className="text-xs text-slate-700 leading-relaxed bg-blue-50/50 p-3.5 rounded-xl border border-blue-100 whitespace-pre-wrap">
+                                {evalData.analisisHukum || "Belum ada ulasan hukum."}
+                              </p>
+                            </div>
+
+                            {/* Kelebihan vs Hal yang Perlu Disempurnakan */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {/* Kelebihan */}
+                              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
+                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                  <span className="text-base">🌟</span>
+                                  <h4 className="font-bold text-emerald-800 text-xs uppercase tracking-wide">
+                                    Kelebihan Jawaban Siswa
+                                  </h4>
+                                </div>
+                                <ul className="space-y-1.5 text-xs text-slate-700">
+                                  {evalData.kelebihan && evalData.kelebihan.length > 0 ? (
+                                    evalData.kelebihan.map((item, idx) => (
+                                      <li key={idx} className="flex items-start gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
+                                        <span className="text-emerald-600 font-bold">✓</span>
+                                        <span className="leading-relaxed">{item}</span>
+                                      </li>
+                                    ))
+                                  ) : (
+                                    <li className="text-slate-400 italic">Tidak ada catatan</li>
+                                  )}
+                                </ul>
+                              </div>
+
+                              {/* Catatan Kritis / Kekurangan */}
+                              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
+                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                  <span className="text-base">💡</span>
+                                  <h4 className="font-bold text-amber-800 text-xs uppercase tracking-wide">
+                                    Hal yang Perlu Disempurnakan
+                                  </h4>
+                                </div>
+                                <ul className="space-y-1.5 text-xs text-slate-700">
+                                  {evalData.kekurangan && evalData.kekurangan.length > 0 ? (
+                                    evalData.kekurangan.map((item, idx) => (
+                                      <li key={idx} className="flex items-start gap-2 bg-amber-50/60 p-2.5 rounded-xl border border-amber-100">
+                                        <span className="text-amber-600 font-bold">•</span>
+                                        <span className="leading-relaxed">{item}</span>
+                                      </li>
+                                    ))
+                                  ) : (
+                                    <li className="text-slate-400 italic">Tidak ada catatan</li>
+                                  )}
+                                </ul>
+                              </div>
+                            </div>
+
+                            {/* Rekomendasi Umpan Balik Guru (Pedagogical Feedback) */}
+                            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-2">
+                              <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                <span className="text-base">💬</span>
+                                <h4 className="font-bold text-slate-800 text-sm">
+                                  Rekomendasi Umpan Balik Guru untuk Kelompok
+                                </h4>
+                              </div>
+                              <div className="bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100 text-xs text-indigo-950 leading-relaxed italic whitespace-pre-wrap">
+                                &ldquo;{evalData.rekomendasiGuru || "Belum ada rekomendasi umpan balik."}&rdquo;
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      };
+
+                      // Render Berdasarkan Mode Terpilih
+                      if (lkpdViewMode === "siswa") {
+                        return renderHasilAsliContent(false);
+                      }
+
+                      if (lkpdViewMode === "evaluasi") {
+                        return renderHasilEvaluasiContent();
+                      }
+
+                      // Mode "split" (Tampilan Berdampingan)
+                      return (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+                          <div>
+                            <div className="flex items-center gap-2 mb-2.5 px-1">
+                              <span className="text-base">📝</span>
+                              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                1. Hasil Asli Pengerjaan Siswa
+                              </h4>
+                            </div>
+                            {renderHasilAsliContent(true)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-2.5 px-1">
+                              <span className="text-base">🤖</span>
+                              <h4 className="text-xs font-bold text-purple-700 uppercase tracking-wider">
+                                2. Hasil Evaluasi & Rubrik AI
+                              </h4>
+                            </div>
+                            {renderHasilEvaluasiContent()}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                   </div>
                 );
               })()}
+
 
               {/* TAB 2: RIWAYAT CHAT INTEROGASI */}
               {activeTab === "chat" && (
@@ -990,35 +1566,105 @@ export default function AdminDashboard() {
             })()}
           </div>
 
+          {/* BAGIAN VI: HASIL EVALUASI ASESOR AI (Jika sudah dinilai) */}
+          {(() => {
+            const solusi = parseSolusi(selectedGroupData.solusi_rekomendasi);
+            const evalData = solusi.evaluasi_ai;
+            if (!evalData) return null;
+
+            return (
+              <div className="border-2 border-indigo-950 rounded p-3 mb-2.5 text-[10px] bg-slate-50">
+                <div className="border-b border-indigo-900 pb-1 mb-1.5 font-bold uppercase text-[10px] text-indigo-950 flex justify-between items-center">
+                  <span>BAGIAN VI: HASIL EVALUASI & PENILAIAN ASESOR AI (UU NO. 28/2014 & RUBRIK HOTS)</span>
+                  <span className="bg-indigo-900 text-white px-2 py-0.5 rounded font-extrabold text-[10px]">
+                    SKOR TOTAL: {evalData.skorTotal} / 100 ({evalData.predikat})
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mb-2 text-[10px]">
+                  <div className="p-1.5 border border-gray-300 rounded bg-white">
+                    <strong className="block text-gray-700">1. Bukti Investigasi:</strong>
+                    <span className="font-bold">{evalData.kategori?.kelengkapanBukti?.skor || 0} / {evalData.kategori?.kelengkapanBukti?.max || 25}</span>
+                  </div>
+                  <div className="p-1.5 border border-gray-300 rounded bg-white">
+                    <strong className="block text-gray-700">2. Analisis HOTS C4:</strong>
+                    <span className="font-bold">{evalData.kategori?.analisisPelanggaranC4?.skor || 0} / {evalData.kategori?.analisisPelanggaranC4?.max || 35}</span>
+                  </div>
+                  <div className="p-1.5 border border-gray-300 rounded bg-white">
+                    <strong className="block text-gray-700">3. Solusi HOTS C5:</strong>
+                    <span className="font-bold">{evalData.kategori?.solusiMitigasiC5?.skor || 0} / {evalData.kategori?.solusiMitigasiC5?.max || 25}</span>
+                  </div>
+                  <div className="p-1.5 border border-gray-300 rounded bg-white">
+                    <strong className="block text-gray-700">4. Refleksi Diri:</strong>
+                    <span className="font-bold">{evalData.kategori?.refleksiDiri?.skor || 0} / {evalData.kategori?.refleksiDiri?.max || 15}</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5 text-[10px]">
+                  <div>
+                    <strong className="block text-gray-800">Ulasan Kesesuaian Hukum (UU Hak Cipta No. 28/2014):</strong>
+                    <p className="p-1.5 border border-gray-300 rounded bg-white">{evalData.analisisHukum}</p>
+                  </div>
+                  <div>
+                    <strong className="block text-gray-800">Rekomendasi Umpan Balik Guru:</strong>
+                    <p className="p-1.5 border border-gray-300 rounded bg-white italic">{evalData.rekomendasiGuru}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* RUBRIK PENILAIAN & PENGESAHAN GURU PEMBIMBING */}
-          <div className="border-2 border-black rounded p-3 text-[10px]">
-            <div className="font-bold uppercase text-[10px] border-b border-black pb-1 mb-1.5 flex justify-between items-center">
-              <span>LEMBAR PENILAIAN & EVALUASI GURU PEMBIMBING (PPG)</span>
-              <span>NILAI AKHIR: [ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / 100 ]</span>
-            </div>
-            <div className="mb-3">
-              <span className="font-semibold block text-gray-600 mb-0.5">Catatan Evaluasi / Umpan Balik Guru:</span>
-              <div className="border-b border-dotted border-gray-400 h-4"></div>
-              <div className="border-b border-dotted border-gray-400 h-4"></div>
-            </div>
-            <div className="grid grid-cols-2 text-center pt-1">
-              <div>
-                <p className="text-gray-600">Mengetahui,</p>
-                <p className="font-bold">Ketua Tim Detektif</p>
-                <div className="h-10"></div>
-                <p className="font-bold underline">(......................................................)</p>
+          {(() => {
+            const solusi = parseSolusi(selectedGroupData.solusi_rekomendasi);
+            const evalData = solusi.evaluasi_ai;
+
+            return (
+              <div className="border-2 border-black rounded p-3 text-[10px]">
+                <div className="font-bold uppercase text-[10px] border-b border-black pb-1 mb-1.5 flex justify-between items-center">
+                  <span>LEMBAR PENILAIAN & EVALUASI GURU PEMBIMBING (PPG)</span>
+                  <span>
+                    NILAI AKHIR: [&nbsp;
+                    {evalData ? (
+                      <strong className="text-black font-extrabold">{evalData.skorTotal} / 100 ({evalData.predikat})</strong>
+                    ) : (
+                      "........ / 100"
+                    )}
+                    &nbsp;]
+                  </span>
+                </div>
+                <div className="mb-3">
+                  <span className="font-semibold block text-gray-600 mb-0.5">Catatan Evaluasi / Umpan Balik Guru:</span>
+                  {evalData?.rekomendasiGuru ? (
+                    <p className="p-1.5 border border-gray-300 rounded bg-gray-50 italic text-[10px]">
+                      {evalData.rekomendasiGuru}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="border-b border-dotted border-gray-400 h-4"></div>
+                      <div className="border-b border-dotted border-gray-400 h-4"></div>
+                    </>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 text-center pt-1">
+                  <div>
+                    <p className="text-gray-600">Mengetahui,</p>
+                    <p className="font-bold">Ketua Tim Detektif</p>
+                    <div className="h-10"></div>
+                    <p className="font-bold underline">(......................................................)</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Guru Pembimbing / Penilai</p>
+                    <p className="font-bold">Mahasiswa PPG</p>
+                    <div className="h-10"></div>
+                    <p className="font-bold underline">(......................................................)</p>
+                    <p className="text-[9px] text-gray-600">NIP / NIM: .......................................</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-600">Guru Pembimbing / Penilai</p>
-                <p className="font-bold">Mahasiswa PPG</p>
-                <div className="h-10"></div>
-                <p className="font-bold underline">(......................................................)</p>
-                <p className="text-[9px] text-gray-600">NIP / NIM: .......................................</p>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
       )}
+
     </>
   );
 }
