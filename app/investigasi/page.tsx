@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_KELAS_LIST, DAFTAR_KASUS } from "@/lib/constants";
+import { ThemeMode, THEMES } from "@/lib/theme";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 const daftarKasus = DAFTAR_KASUS;
 
@@ -42,6 +44,27 @@ const parseNamaAnggotaString = (raw: string) => {
 const STORAGE_KEY_SESSION = "hakita_investigasi_session";
 
 export default function InvestigasiPage() {
+  // Mode Tema Interaktif (Cyber, Ceria, Arcade)
+  const [tema, setTema] = useState<ThemeMode>("cyber");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("hakita_theme") as ThemeMode;
+      if (saved && THEMES[saved]) {
+        setTema(saved);
+      }
+    } catch {}
+  }, []);
+
+  const handleGantiTema = (newTheme: ThemeMode) => {
+    setTema(newTheme);
+    try {
+      localStorage.setItem("hakita_theme", newTheme);
+    } catch {}
+  };
+
+  const currentTheme = THEMES[tema];
+
   // Sesi Kelas
   const [kodeKelasInput, setKodeKelasInput] = useState("");
   const [kodeKelasAktif, setKodeKelasAktif] = useState<string | null>(null);
@@ -1134,37 +1157,47 @@ export default function InvestigasiPage() {
   // TAHAP 1: INPUT KODE KELAS
   if (!kodeKelasAktif) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-center p-4 sm:p-6 text-white relative overflow-hidden">
+      <div className={`min-h-screen ${currentTheme.pageBg} flex flex-col items-center justify-center p-4 sm:p-6 ${currentTheme.textColor} relative overflow-hidden transition-colors duration-300`}>
         {/* Background Ambient Orbs */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute -bottom-10 -right-10 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
+        <div className={`absolute -bottom-10 -right-10 w-80 h-80 ${currentTheme.orb2} rounded-full blur-3xl pointer-events-none`}></div>
 
-        <button 
-          onClick={() => window.location.href = '/'}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs sm:text-sm font-bold z-10"
-        >
-          <span>←</span> Kembali ke Beranda
-        </button>
+        {/* Top Controls: Kembali & Theme Switcher */}
+        <div className="absolute top-6 left-6 right-6 md:top-8 md:left-8 md:right-8 flex items-center justify-between z-20">
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="flex items-center gap-2 opacity-75 hover:opacity-100 transition-opacity text-xs sm:text-sm font-bold"
+          >
+            <span>←</span> Kembali ke Beranda
+          </button>
+          <ThemeSwitcher currentTheme={tema} onThemeChange={handleGantiTema} />
+        </div>
 
-        <div className="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-700/80 max-w-md w-full text-center relative z-10">
+        <div className={`${currentTheme.cardBg} p-6 sm:p-8 rounded-3xl shadow-2xl border ${currentTheme.cardBorder} max-w-md w-full text-center relative z-10 mt-14 sm:mt-0 transition-all`}>
           <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 relative">
             <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-xl" />
             <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-cyan-400 animate-ping"></span>
           </div>
           
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-blue-500/15 to-cyan-500/15 border border-blue-500/30 text-cyan-300 text-[11px] font-bold rounded-full mb-3">
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1 border text-[11px] font-bold rounded-full mb-3 ${
+            currentTheme.isLight 
+              ? "bg-blue-100 border-blue-300 text-blue-800" 
+              : currentTheme.id === "arcade"
+              ? "bg-fuchsia-950/60 border-fuchsia-500/40 text-pink-300"
+              : "bg-blue-500/15 border-blue-500/30 text-cyan-300"
+          }`}>
             <span>🕵️‍♂️</span> Portal Investigasi Siswa
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400 mb-2">
+          <h1 className={`text-2xl sm:text-3xl font-black mb-2 ${currentTheme.cardTitle}`}>
             DETEKTIF HAKI
           </h1>
-          <p className="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed">
+          <p className={`${currentTheme.cardSubtext} text-xs sm:text-sm mb-6 leading-relaxed`}>
             Masukkan Kode Akses Kelas yang dibagikan oleh Guru Anda untuk membuka ruang investigasi digital kelompok.
           </p>
 
           {sesiHabisAlert && (
-            <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-200 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-300 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-300">
               <div className="flex items-start gap-2.5">
                 <span className="text-2xl shrink-0">⏰</span>
                 <div>
@@ -1180,7 +1213,7 @@ export default function InvestigasiPage() {
 
           <form onSubmit={handleVerifikasiKelas} className="space-y-4 text-left">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <label className={`block text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                 <span>🎓</span> Kode Akses Kelas
               </label>
               <input
@@ -1192,10 +1225,10 @@ export default function InvestigasiPage() {
                   if (errorKelas) setErrorKelas("");
                 }}
                 placeholder="Contoh: HAKI-9A"
-                className={`w-full bg-slate-950/80 border rounded-2xl px-4 py-3.5 text-white font-mono uppercase tracking-widest text-center text-lg font-bold focus:outline-none transition-all ${
+                className={`w-full ${currentTheme.inputBg} border rounded-2xl px-4 py-3.5 ${currentTheme.inputText} font-mono uppercase tracking-widest text-center text-lg font-bold focus:outline-none transition-all ${
                   errorKelas 
                     ? "border-red-500 bg-red-950/20 focus:ring-2 focus:ring-red-500" 
-                    : "border-slate-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
+                    : currentTheme.inputBorder
                 }`}
               />
               {errorKelas && (
@@ -1208,7 +1241,7 @@ export default function InvestigasiPage() {
             <button
               type="submit"
               disabled={isValidatingKelas || !kodeKelasInput.trim()}
-              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:via-indigo-500 hover:to-cyan-400 disabled:opacity-50 text-white font-black py-3.5 px-4 rounded-2xl transition-all shadow-lg shadow-blue-600/30 hover:shadow-cyan-500/30 active:scale-95 text-sm flex items-center justify-center gap-2 cursor-pointer"
+              className={`w-full ${currentTheme.primaryBtn} disabled:opacity-50 font-black py-3.5 px-4 rounded-2xl transition-all shadow-lg active:scale-95 text-sm flex items-center justify-center gap-2 cursor-pointer`}
             >
               {isValidatingKelas ? "Memverifikasi..." : "Lanjut ke Pemilihan Kelompok →"}
             </button>
@@ -1221,40 +1254,44 @@ export default function InvestigasiPage() {
   // TAHAP 2: PEMILIHAN KELOMPOK (DENGAN INDIKATOR MULTI-DEVICE ROOM AKTIF)
   if (!kelompokAktif) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-center p-4 sm:p-6 text-white relative overflow-hidden">
+      <div className={`min-h-screen ${currentTheme.pageBg} flex flex-col items-center justify-center p-4 sm:p-6 ${currentTheme.textColor} relative overflow-hidden transition-colors duration-300`}>
         {/* Background Ambient Orbs */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
+        <div className={`absolute -bottom-10 -left-10 w-80 h-80 ${currentTheme.orb2} rounded-full blur-3xl pointer-events-none`}></div>
 
-        <button 
-          onClick={() => {
-            setKodeKelasAktif(null);
-            setNamaKelas("");
-            setKodeKelasInput("");
-            setActiveGroups([]);
-            setKelompokAktif(null);
-            setIsIdentitasLengkap(false);
-            try {
-              localStorage.removeItem(STORAGE_KEY_SESSION);
-            } catch {}
-          }}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs sm:text-sm font-bold z-10"
-        >
-          <span>←</span> Ganti Kelas
-        </button>
+        {/* Top Controls */}
+        <div className="absolute top-6 left-6 right-6 md:top-8 md:left-8 md:right-8 flex items-center justify-between z-20">
+          <button 
+            onClick={() => {
+              setKodeKelasAktif(null);
+              setNamaKelas("");
+              setKodeKelasInput("");
+              setActiveGroups([]);
+              setKelompokAktif(null);
+              setIsIdentitasLengkap(false);
+              try {
+                localStorage.removeItem(STORAGE_KEY_SESSION);
+              } catch {}
+            }}
+            className="flex items-center gap-2 opacity-75 hover:opacity-100 transition-opacity text-xs sm:text-sm font-bold"
+          >
+            <span>←</span> Ganti Kelas
+          </button>
+          <ThemeSwitcher currentTheme={tema} onThemeChange={handleGantiTema} />
+        </div>
 
-        <div className="text-center mb-8 mt-14 md:mt-0 z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-emerald-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold rounded-full mb-3 uppercase tracking-wider shadow-inner">
+        <div className="text-center mb-8 mt-16 md:mt-0 z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-emerald-500/20 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider shadow-inner">
             <span>Sesi Kelas: {namaKelas} ({kodeKelasAktif})</span>
             <span>•</span>
-            <span className="text-amber-400 font-extrabold flex items-center gap-1">
+            <span className="text-amber-500 font-extrabold flex items-center gap-1">
               <span>⏱️</span> {durasiMenit} Menit
             </span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400">
+          <h1 className={`text-3xl md:text-5xl font-black mb-2 ${currentTheme.cardTitle}`}>
             Identifikasi Tim Detektif
           </h1>
-          <p className="text-slate-400 text-xs sm:text-sm md:text-base max-w-md mx-auto leading-relaxed">
+          <p className={`${currentTheme.cardSubtext} text-xs sm:text-sm md:text-base max-w-md mx-auto leading-relaxed`}>
             Pilih nomor kelompok Anda. Jika rekan tim sudah membuka room di laptop/HP, Anda akan otomatis bergabung ke room yang sama!
           </p>
         </div>
@@ -1269,12 +1306,12 @@ export default function InvestigasiPage() {
                 disabled={isJoiningRoom}
                 className={`relative py-6 sm:py-7 px-4 sm:px-5 rounded-3xl shadow-xl transition-all duration-300 flex flex-col items-center gap-2 group cursor-pointer border ${
                   isRoomActive
-                    ? "bg-gradient-to-b from-slate-900/90 to-emerald-950/40 border-emerald-500/50 hover:border-emerald-400 shadow-emerald-500/10 hover:shadow-emerald-500/25 ring-1 ring-emerald-500/30"
-                    : "bg-slate-900/80 backdrop-blur-md border-slate-800 hover:border-cyan-400 hover:bg-slate-850 shadow-slate-950/50 hover:shadow-cyan-500/20"
+                    ? "bg-gradient-to-b from-emerald-500/15 to-teal-500/25 border-emerald-500/50 hover:border-emerald-400 shadow-emerald-500/10 ring-1 ring-emerald-500/30"
+                    : `${currentTheme.cardBg} ${currentTheme.cardBorder} hover:border-cyan-400`
                 } hover:-translate-y-2 active:scale-95 disabled:opacity-50`}
               >
                 {isRoomActive && (
-                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
+                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-emerald-500/20 text-emerald-500 border border-emerald-500/40 text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     Room Aktif
                   </span>
@@ -1282,8 +1319,8 @@ export default function InvestigasiPage() {
                 <span className="text-4xl drop-shadow-md group-hover:scale-110 transition-transform">
                   {num === 1 ? "🕵️‍♂️" : num === 2 ? "🎧" : num === 3 ? "💻" : num === 4 ? "🎨" : num === 5 ? "📸" : "📱"}
                 </span>
-                <span className="text-lg md:text-xl font-black text-white">Kelompok {num}</span>
-                <span className="text-[11px] font-medium text-slate-400 text-center">
+                <span className={`text-lg md:text-xl font-black ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>Kelompok {num}</span>
+                <span className={`text-[11px] font-medium ${currentTheme.cardSubtext} text-center`}>
                   {isRoomActive ? "Rekan tim di dalam → Gabung" : "Klik untuk buka room"}
                 </span>
               </button>
@@ -1306,61 +1343,75 @@ export default function InvestigasiPage() {
   // TAHAP 3: REGISTRASI TIM (BAGIAN I: IDENTITAS & PERAN ANGGOTA - JIKA BELUM DIDAFTARKAN DEVICE PERTAMA)
   if (kelompokAktif && !isIdentitasLengkap) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-center p-4 sm:p-6 text-white relative overflow-hidden">
+      <div className={`min-h-screen ${currentTheme.pageBg} flex flex-col items-center justify-center p-4 sm:p-6 ${currentTheme.textColor} relative overflow-hidden transition-colors duration-300`}>
         {/* Background Ambient Orbs */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
 
-        <button 
-          onClick={() => {
-            setKelompokAktif(null);
-            try {
-              const sess = localStorage.getItem(STORAGE_KEY_SESSION);
-              if (sess) {
-                const parsed = JSON.parse(sess);
-                parsed.kelompok = null;
-                localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(parsed));
-              }
-            } catch {}
-          }}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs sm:text-sm font-bold z-10"
-        >
-          <span>←</span> Kembali Pilih Kelompok
-        </button>
+        {/* Top Controls */}
+        <div className="absolute top-6 left-6 right-6 md:top-8 md:left-8 md:right-8 flex items-center justify-between z-20">
+          <button 
+            onClick={() => {
+              setKelompokAktif(null);
+              try {
+                const sess = localStorage.getItem(STORAGE_KEY_SESSION);
+                if (sess) {
+                  const parsed = JSON.parse(sess);
+                  parsed.kelompok = null;
+                  localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(parsed));
+                }
+              } catch {}
+            }}
+            className="flex items-center gap-2 opacity-75 hover:opacity-100 transition-opacity text-xs sm:text-sm font-bold"
+          >
+            <span>←</span> Kembali Pilih Kelompok
+          </button>
+          <ThemeSwitcher currentTheme={tema} onThemeChange={handleGantiTema} />
+        </div>
 
-        <div className="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-700/80 max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-width:thin] relative z-10">
+        <div className={`${currentTheme.cardBg} p-6 sm:p-8 rounded-3xl shadow-2xl border ${currentTheme.cardBorder} max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-width:thin] relative z-10 mt-14 sm:mt-0 transition-all`}>
           <div className="text-center mb-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-500/15 to-emerald-500/15 border border-blue-500/30 text-blue-300 text-xs font-bold rounded-full mb-2 uppercase tracking-wider">
+            <div className={`inline-flex items-center gap-2 px-3 py-1 border text-xs font-bold rounded-full mb-2 uppercase tracking-wider ${
+              currentTheme.isLight
+                ? "bg-blue-100 border-blue-300 text-blue-800"
+                : "bg-blue-500/15 border-blue-500/30 text-blue-300"
+            }`}>
               <span>Kelas {namaKelas} • Kelompok {kelompokAktif}</span>
               <span>•</span>
-              <span className="text-amber-400 flex items-center gap-1 font-bold">
+              <span className="text-amber-500 flex items-center gap-1 font-bold">
                 <span>⏱️</span> {durasiMenit} Menit
               </span>
             </div>
             <div className="text-4xl mb-1.5">👥</div>
-            <h2 className="text-xl md:text-2xl font-black text-white mb-1">BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
-            <p className="text-slate-400 text-xs">Masukkan nama anggota tim sesuai peran detektif masing-masing.</p>
+            <h2 className={`text-xl md:text-2xl font-black mb-1 ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
+            <p className={`${currentTheme.cardSubtext} text-xs`}>Masukkan nama anggota tim sesuai peran detektif masing-masing.</p>
           </div>
 
           {/* Card Studi Kasus (Stukas) Kelompok */}
-          <div className="mb-4 p-4 bg-gradient-to-br from-amber-500/10 via-slate-900 to-indigo-950/40 border-2 border-amber-500/40 rounded-2xl shadow-xl relative overflow-hidden">
+          <div className={`mb-4 p-4 ${currentTheme.stukasBoxBg} border-2 ${currentTheme.stukasBoxBorder} rounded-2xl shadow-xl relative overflow-hidden transition-all`}>
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold rounded-full uppercase tracking-wider">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 border text-[10px] font-bold rounded-full uppercase tracking-wider ${currentTheme.stukasBadge}`}>
                 <span>📁</span> Studi Kasus (Stukas) Kelompok #{kasusAktif.id}
               </span>
-              <span className="text-[10px] font-mono text-cyan-400 font-bold bg-cyan-950/60 px-2 py-0.5 rounded-md border border-cyan-500/30">
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                currentTheme.isLight ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-cyan-950/60 text-cyan-400 border-cyan-500/30"
+              }`}>
                 Fokus Kasus
               </span>
             </div>
-            <h3 className="text-sm sm:text-base font-black text-white mb-2 flex items-center gap-1.5 text-amber-200">
+            <h3 className={`text-sm sm:text-base font-black mb-2 flex items-center gap-1.5 ${currentTheme.stukasTitleText}`}>
               <span>🔎</span> {kasusAktif.judul}
             </h3>
-            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+            <p className={`text-xs sm:text-sm leading-relaxed p-3 rounded-xl border ${currentTheme.stukasDescBg} ${currentTheme.stukasDescText} ${currentTheme.cardBorder}`}>
               {kasusAktif.deskripsi}
             </p>
           </div>
 
           {/* Banner Tips Multi-Device */}
-          <div className="mb-4 p-3.5 bg-blue-950/50 border border-blue-500/30 rounded-2xl text-[11px] text-blue-200 flex items-start gap-2 shadow-inner">
+          <div className={`mb-4 p-3.5 rounded-2xl text-[11px] flex items-start gap-2 shadow-inner border ${
+            currentTheme.isLight
+              ? "bg-blue-50 border-blue-200 text-blue-900"
+              : "bg-blue-950/50 border-blue-500/30 text-blue-200"
+          }`}>
             <span className="text-base shrink-0">💡</span>
             <span>
               <strong>Tips Multi-Device:</strong> Cukup 1 siswa di laptop mendaftarkan nama tim ini. Perangkat rekan tim lain (HP Pencatat & HP Analis) akan otomatis terhubung ke room ini!
@@ -1369,7 +1420,7 @@ export default function InvestigasiPage() {
           
           <form onSubmit={handleMulaiInvestigasi} className="space-y-3">
             <div>
-              <label className="block text-xs font-bold text-blue-300 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-blue-500 mb-1 flex items-center gap-1.5">
                 <span>💻</span> 1. Anggota 1 (Interregator Chat AI) <span className="text-red-400">*</span>
               </label>
               <input 
@@ -1378,12 +1429,12 @@ export default function InvestigasiPage() {
                 value={anggotaInterregator}
                 onChange={(e) => setAnggotaInterregator(e.target.value)}
                 placeholder="Nama siswa yang bertugas interogasi saksi AI di laptop"
-                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                className={`w-full ${currentTheme.inputBg} border ${currentTheme.inputBorder} rounded-xl px-3.5 py-2.5 ${currentTheme.inputText} text-xs md:text-sm focus:outline-none transition-all`}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-emerald-300 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-emerald-500 mb-1 flex items-center gap-1.5">
                 <span>🔍</span> 2. Anggota 2 (Pencatat Bukti 1)
               </label>
               <input 
@@ -1391,12 +1442,12 @@ export default function InvestigasiPage() {
                 value={anggotaPencatat1}
                 onChange={(e) => setAnggotaPencatat1(e.target.value)}
                 placeholder="Nama siswa pencatat petunjuk kunci 1 (di HP/Laptop)"
-                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                className={`w-full ${currentTheme.inputBg} border ${currentTheme.inputBorder} rounded-xl px-3.5 py-2.5 ${currentTheme.inputText} text-xs md:text-sm focus:outline-none transition-all`}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-teal-300 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-teal-500 mb-1 flex items-center gap-1.5">
                 <span>🔍</span> 3. Anggota 3 (Pencatat Bukti 2)
               </label>
               <input 
@@ -1404,12 +1455,12 @@ export default function InvestigasiPage() {
                 value={anggotaPencatat2}
                 onChange={(e) => setAnggotaPencatat2(e.target.value)}
                 placeholder="Nama siswa pencatat petunjuk kunci 2"
-                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+                className={`w-full ${currentTheme.inputBg} border ${currentTheme.inputBorder} rounded-xl px-3.5 py-2.5 ${currentTheme.inputText} text-xs md:text-sm focus:outline-none transition-all`}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-purple-300 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-purple-500 mb-1 flex items-center gap-1.5">
                 <span>⚖️</span> 4. Anggota 4 (Analis HAKI 1)
               </label>
               <input 
@@ -1417,12 +1468,12 @@ export default function InvestigasiPage() {
                 value={anggotaAnalis1}
                 onChange={(e) => setAnggotaAnalis1(e.target.value)}
                 placeholder="Nama siswa analis pelanggaran hukum/etika 1 (di HP/Laptop)"
-                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30"
+                className={`w-full ${currentTheme.inputBg} border ${currentTheme.inputBorder} rounded-xl px-3.5 py-2.5 ${currentTheme.inputText} text-xs md:text-sm focus:outline-none transition-all`}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-indigo-500 mb-1 flex items-center gap-1.5">
                 <span>⚖️</span> 5. Anggota 5 (Analis HAKI 2)
               </label>
               <input 
@@ -1430,12 +1481,12 @@ export default function InvestigasiPage() {
                 value={anggotaAnalis2}
                 onChange={(e) => setAnggotaAnalis2(e.target.value)}
                 placeholder="Nama siswa analis pelanggaran hukum/etika 2"
-                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30"
+                className={`w-full ${currentTheme.inputBg} border ${currentTheme.inputBorder} rounded-xl px-3.5 py-2.5 ${currentTheme.inputText} text-xs md:text-sm focus:outline-none transition-all`}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-amber-500 mb-1 flex items-center gap-1.5">
                 <span>📢</span> 6. Anggota 6 (Juru Bicara Presentasi)
               </label>
               <input 
@@ -1443,13 +1494,13 @@ export default function InvestigasiPage() {
                 value={anggotaJuruBicara}
                 onChange={(e) => setAnggotaJuruBicara(e.target.value)}
                 placeholder="Nama siswa juru bicara saat presentasi kelas"
-                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
+                className={`w-full ${currentTheme.inputBg} border ${currentTheme.inputBorder} rounded-xl px-3.5 py-2.5 ${currentTheme.inputText} text-xs md:text-sm focus:outline-none transition-all`}
               />
             </div>
 
             <button 
               type="submit" 
-              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:via-indigo-500 hover:to-cyan-400 text-white font-black py-3.5 px-4 rounded-2xl transition-all hover:-translate-y-0.5 shadow-xl shadow-blue-600/30 active:scale-95 mt-4 text-sm flex items-center justify-center gap-2 cursor-pointer"
+              className={`w-full ${currentTheme.primaryBtn} font-black py-3.5 px-4 rounded-2xl transition-all hover:-translate-y-0.5 shadow-xl active:scale-95 mt-4 text-sm flex items-center justify-center gap-2 cursor-pointer`}
             >
               <span>Mulai Investigasi & Buka Room Kolaborasi</span>
               <span>🔍</span>
@@ -1461,7 +1512,7 @@ export default function InvestigasiPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen h-[100dvh] bg-slate-900 text-slate-100 overflow-hidden">
+    <div className={`flex flex-col h-screen h-[100dvh] ${currentTheme.pageBg} ${currentTheme.textColor} overflow-hidden transition-colors duration-300`}>
       {/* Toast Notifikasi Multi-Device Room */}
       {roomToast && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -1471,21 +1522,21 @@ export default function InvestigasiPage() {
       )}
 
       {/* Top Navbar Responsif & Energik */}
-      <header className="h-14 bg-slate-900/95 backdrop-blur-md border-b border-indigo-950/80 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2 shadow-md">
+      <header className={`h-14 ${currentTheme.navBg} border-b ${currentTheme.navBorder} px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2 shadow-md`}>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="relative">
             <img src="/logo.png" alt="Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain drop-shadow" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
           </div>
           <div>
-            <h1 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5 sm:gap-2">
+            <h1 className={`text-xs sm:text-sm font-black flex items-center gap-1.5 sm:gap-2 ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>
               <span className="hidden sm:inline tracking-wider">BERKAS INVESTIGASI</span>
-              <span className="px-2 py-0.5 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 text-cyan-300 text-[10px] rounded-full border border-blue-500/40 font-mono font-bold">
+              <span className={`px-2 py-0.5 rounded-full border font-mono font-bold text-[10px] ${currentTheme.navBadgeBg} ${currentTheme.navBadgeBorder} ${currentTheme.navBadgeText}`}>
                 {namaKelas} • Kel {kelompokAktif}
               </span>
               {/* Badge Multi-Device Room */}
               <span 
-                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold rounded-full shadow-sm" 
+                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-[10px] font-bold rounded-full shadow-sm" 
                 title={isRealtimeConnected ? "Realtime WebSocket Terhubung: Kolaborasi Multi-Device Aktif" : "Kolaborasi Multi-Device Aktif (Auto-Sync Polling)"}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -1504,6 +1555,8 @@ export default function InvestigasiPage() {
               ? "bg-rose-950 border-rose-500 text-rose-300 animate-pulse ring-1 ring-rose-500 shadow-rose-500/20"
               : sisaDetik <= 300
               ? "bg-gradient-to-r from-amber-950/90 to-orange-950/90 border-amber-500 text-amber-300 animate-pulse shadow-md shadow-amber-500/20"
+              : currentTheme.isLight
+              ? "bg-indigo-50 border-indigo-200 text-indigo-900"
               : "bg-gradient-to-r from-slate-900 to-indigo-950 border-indigo-500/40 text-cyan-300"
           }`} 
           title={`Batas waktu investigasi kelas: ${durasiMenit} menit (Tersinkronisasi ke seluruh perangkat tim)`}
@@ -1512,7 +1565,7 @@ export default function InvestigasiPage() {
             {isSubmitted ? "✅" : sisaDetik <= 0 ? "🚨" : sisaDetik <= 300 ? "⏳" : "⏱️"}
           </span>
           <div className="flex flex-col text-left leading-none">
-            <span className="text-[9px] uppercase tracking-wider text-slate-400 font-sans font-medium hidden xs:inline">
+            <span className="text-[9px] uppercase tracking-wider opacity-70 font-sans font-medium hidden xs:inline">
               {isSubmitted ? "Terkirim" : sisaDetik <= 0 ? "Waktu Habis" : "Sisa Waktu"}
             </span>
             <span className="text-xs sm:text-sm font-black tracking-wider mt-0.5">
@@ -1521,11 +1574,13 @@ export default function InvestigasiPage() {
           </div>
         </div>
 
-        {/* Tombol Kasus & Keluar */}
+        {/* Tombol Tema, Kasus & Keluar */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <ThemeSwitcher currentTheme={tema} onThemeChange={handleGantiTema} compact={true} />
+
           <button
             onClick={() => setShowKasusModal(true)}
-            className="text-[11px] sm:text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2.5 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1 font-bold cursor-pointer transition-all shadow-sm"
+            className={`text-[11px] sm:text-xs px-2.5 py-1.5 rounded-xl border flex items-center gap-1 font-bold cursor-pointer transition-all shadow-sm ${currentTheme.secondaryBtn}`}
             title="Lihat Rincian Berkas Kasus"
           >
             <span>📁</span> <span className="hidden xs:inline">Kasus #{kasusAktif.id}</span>
@@ -1544,7 +1599,7 @@ export default function InvestigasiPage() {
                 }
               } catch {}
             }}
-            className="text-xs text-slate-400 hover:text-white px-2 py-1 cursor-pointer font-medium"
+            className="text-xs opacity-75 hover:opacity-100 px-2 py-1 cursor-pointer font-medium"
             title="Ganti Kelompok"
           >
             Keluar
@@ -1553,7 +1608,7 @@ export default function InvestigasiPage() {
       </header>
 
       {/* MOBILE SEGMENTED TAB SWITCHER - 100% Terlihat Jelas & Nyaman Diklik di Layar HP */}
-      <div className="lg:hidden bg-slate-900 border-b border-indigo-950/80 p-2 shrink-0 z-20 flex gap-2 shadow-md">
+      <div className={`lg:hidden ${currentTheme.navBg} border-b ${currentTheme.navBorder} p-2 shrink-0 z-20 flex gap-2 shadow-md`}>
         <button
           type="button"
           onClick={() => setActiveTabMobile("chat")}
@@ -1602,32 +1657,32 @@ export default function InvestigasiPage() {
       <div className="flex-1 flex overflow-hidden">
         
         {/* PANEL KIRI: INTEROGASI AI (CHAT) - Ideal untuk Siswa Berperan Interregator di Laptop */}
-        <div className={`w-full lg:w-1/2 flex flex-col bg-slate-950 border-r border-slate-850 h-full ${
+        <div className={`w-full lg:w-1/2 flex flex-col ${currentTheme.chatPanelBg} border-r ${currentTheme.chatBubbleAiBorder} h-full ${
           activeTabMobile === "chat" ? "flex" : "hidden lg:flex"
         }`}>
           {/* Chat Header Status */}
-          <div className="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <div className={`p-3 ${currentTheme.navBg} border-b ${currentTheme.navBorder} flex items-center justify-between text-xs shrink-0`}>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-              <span className="font-bold text-slate-200">Saksi Mata Digital (AI)</span>
-              <span className="text-[10px] bg-blue-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-blue-500/30 hidden sm:inline font-mono font-bold">
+              <span className={`font-bold ${currentTheme.isLight ? 'text-slate-800' : 'text-slate-200'}`}>Saksi Mata Digital (AI)</span>
+              <span className="text-[10px] bg-blue-500/20 text-cyan-400 px-2 py-0.5 rounded-full border border-blue-500/30 hidden sm:inline font-mono font-bold">
                 Laptop Interregator
               </span>
             </div>
-            <span className="text-[11px] text-slate-500">Hasil chat tersinkron otomatis ke HP tim</span>
+            <span className={`text-[11px] ${currentTheme.cardSubtext}`}>Hasil chat tersinkron otomatis ke HP tim</span>
           </div>
 
           {/* Chat Bubble Scroll Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 [scrollbar-width:thin]">
             {pesan.length === 0 && (
-              <div className="p-6 text-center text-slate-400 max-w-md mx-auto my-auto space-y-3">
+              <div className={`p-6 text-center ${currentTheme.cardSubtext} max-w-md mx-auto my-auto space-y-3`}>
                 <div className="text-4xl">🕵️‍♀️💬</div>
-                <h3 className="font-black text-white text-base">Mulai Interogasi Saksi Mata Digital</h3>
+                <h3 className={`font-black text-base ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>Mulai Interogasi Saksi Mata Digital</h3>
                 <p className="text-xs leading-relaxed">
                   Saksi ini memegang petunjuk rahasia mengenai kasus <strong>"{kasusAktif.judul}"</strong>. Tanyakan siapa pelakunya, bukti apa yang ditemukan, atau lisensi apa yang dilanggar!
                 </p>
-                <div className="text-left text-xs bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-1.5 text-slate-300 shadow-inner">
-                  <p className="font-bold text-cyan-400 mb-1 flex items-center gap-1">
+                <div className={`text-left text-xs ${currentTheme.cardInnerBg} p-3.5 rounded-2xl border ${currentTheme.cardInnerBorder} space-y-1.5 shadow-inner`}>
+                  <p className="font-bold text-cyan-500 mb-1 flex items-center gap-1">
                     <span>💡</span> Contoh pertanyaan pemantik:
                   </p>
                   <p>• "Apa yang kamu lihat ketika pelaku menyebarkan karya korban?"</p>
@@ -1646,8 +1701,8 @@ export default function InvestigasiPage() {
                 )}
                 <div className={`p-3.5 rounded-2xl max-w-[85%] text-xs md:text-sm leading-relaxed whitespace-pre-wrap ${
                   p.role === "user" 
-                    ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 text-white rounded-br-none shadow-md shadow-blue-600/20 font-medium" 
-                    : "bg-slate-900 text-slate-100 border border-slate-800 rounded-bl-none shadow-sm"
+                    ? `${currentTheme.chatBubbleUserBg} ${currentTheme.chatBubbleUserText} rounded-br-none shadow-md font-medium` 
+                    : `${currentTheme.chatBubbleAiBg} ${currentTheme.chatBubbleAiText} border ${currentTheme.chatBubbleAiBorder} rounded-bl-none shadow-sm`
                 }`}>
                   {p.content}
                 </div>
@@ -1663,19 +1718,19 @@ export default function InvestigasiPage() {
           </div>
 
           {/* Form Chat Input */}
-          <form onSubmit={kirimPesan} className="p-3 bg-slate-900 border-t border-slate-800 flex gap-2 shrink-0 pb-16 lg:pb-3">
+          <form onSubmit={kirimPesan} className={`p-3 ${currentTheme.navBg} border-t ${currentTheme.navBorder} flex gap-2 shrink-0 pb-16 lg:pb-3`}>
             <input
               type="text"
               value={inputUser}
               onChange={(e) => setInputUser(e.target.value)}
               placeholder="Ketik pertanyaan investigasi kepada saksi di sini..."
               disabled={isLoading}
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 disabled:opacity-50"
+              className={`flex-1 ${currentTheme.chatInputBg} border ${currentTheme.chatInputBorder} rounded-xl px-4 py-2.5 ${currentTheme.chatInputText} text-xs md:text-sm focus:outline-none disabled:opacity-50`}
             />
             <button
               type="submit"
               disabled={isLoading || !inputUser.trim()}
-              className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 disabled:opacity-50 text-white font-black px-4 py-2.5 rounded-xl transition-all text-xs md:text-sm shrink-0 flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20 active:scale-95"
+              className={`${currentTheme.primaryBtn} disabled:opacity-50 text-white font-black px-4 py-2.5 rounded-xl transition-all text-xs md:text-sm shrink-0 flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95`}
             >
               <span>Tanya</span> 🔍
             </button>
@@ -1683,30 +1738,30 @@ export default function InvestigasiPage() {
         </div>
 
         {/* PANEL KANAN: LEMBAR INVESTIGASI (LKPD FORM) - Multi-Device Friendly dengan Quick Jump Navigation */}
-        <div className={`w-full lg:w-1/2 flex flex-col bg-slate-950 h-full overflow-hidden ${
+        <div className={`w-full lg:w-1/2 flex flex-col ${currentTheme.lkpdPanelBg} h-full overflow-hidden ${
           activeTabMobile === "lembar" ? "flex" : "hidden lg:flex"
         }`}>
           {/* Header Lembar Investigasi & Auto Save */}
-          <div className="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">
+          <div className={`p-3 ${currentTheme.lkpdHeaderBg} flex items-center justify-between shrink-0`}>
             <div className="flex items-center gap-2">
               <span className="text-base">📝</span>
-              <span className="font-bold text-xs uppercase tracking-wider text-slate-200">
+              <span className={`font-bold text-xs uppercase tracking-wider ${currentTheme.lkpdHeaderText}`}>
                 Lembar Kerja Investigasi (LKPD)
               </span>
             </div>
             <div className="flex items-center gap-2">
               {saveStatus === "saving" && (
-                <span className="text-[11px] text-amber-400 flex items-center gap-1">
+                <span className="text-[11px] text-amber-500 flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span> Menyimpan...
                 </span>
               )}
               {saveStatus === "saved" && (
-                <span className="text-[11px] text-emerald-400 flex items-center gap-1">
+                <span className="text-[11px] text-emerald-500 flex items-center gap-1">
                   <span>✓</span> Tersimpan otomatis
                 </span>
               )}
               {isSubmitted && (
-                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold rounded-full">
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] font-bold rounded-full">
                   FINAL TERKIRIM
                 </span>
               )}
@@ -1714,126 +1769,134 @@ export default function InvestigasiPage() {
           </div>
 
           {/* Quick-Jump Navigation Bar (Memudahkan Siswa di HP Melompat Langsung ke Tugasnya) */}
-          <div className="bg-slate-900/90 border-b border-slate-800 px-3 py-2 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] shrink-0">
-            <span className="text-[10px] text-slate-400 font-bold shrink-0 hidden sm:inline">Lompat Cepat:</span>
+          <div className={`${currentTheme.navBg} border-b ${currentTheme.navBorder} px-3 py-2 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] shrink-0`}>
+            <span className={`text-[10px] ${currentTheme.cardSubtext} font-bold shrink-0 hidden sm:inline`}>Lompat Cepat:</span>
             <button 
               type="button"
               onClick={() => sectionBuktiRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
             >
               <span>🔍</span> Bukti (Pencatat)
             </button>
             <button 
               type="button"
               onClick={() => sectionAnalisisRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 border border-purple-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
             >
               <span>⚖️</span> Analisis UU (Analis)
             </button>
             <button 
               type="button"
               onClick={() => sectionSolusiRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
             >
               <span>💡</span> Solusi & Mitigasi
             </button>
             <button 
               type="button"
               onClick={() => sectionRefleksiRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
             >
               <span>💭</span> Refleksi
             </button>
           </div>
 
           {/* Form Konten LKPD (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 [scrollbar-width:thin] text-slate-200 text-xs pb-28 lg:pb-6">
+          <div className={`flex-1 overflow-y-auto p-4 md:p-6 space-y-6 [scrollbar-width:thin] ${currentTheme.textColor} text-xs pb-28 lg:pb-6`}>
             
             {/* Judul Berkas */}
-            <div className="border-b border-slate-800 pb-3 text-center">
-              <h2 className="text-base font-extrabold text-white tracking-wide">
+            <div className={`border-b ${currentTheme.cardBorder} pb-3 text-center`}>
+              <h2 className={`text-base font-extrabold tracking-wide ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>
                 BERKAS INVESTIGASI TIM DETEKTIF HAKI
               </h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className={`text-[11px] ${currentTheme.cardSubtext} mt-0.5`}>
                 Kolaborasi multi-device aktif: Setiap catatan dan analisis tersimpan otomatis tanpa saling menimpa.
               </p>
             </div>
 
             {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
-            <div className="bg-slate-900/90 border border-blue-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-lg">
+            <div className={`${currentTheme.lkpdCardBg} border ${currentTheme.lkpdCardBorder} rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-lg`}>
               <div className="flex items-center justify-between">
-                <h3 className="font-black text-xs text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-blue-700' : 'text-cyan-300'}`}>
                   <span>🏷️</span> BAGIAN I: IDENTITAS TIM DETEKTIF
                 </h3>
-                <span className="text-[10px] bg-blue-500/20 text-cyan-300 border border-blue-500/40 px-2.5 py-0.5 rounded-full font-bold">
+                <span className={`text-[10px] border px-2.5 py-0.5 rounded-full font-bold ${
+                  currentTheme.isLight ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-blue-500/20 text-cyan-300 border-blue-500/40"
+                }`}>
                   5–6 Anak/Kelompok
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <div className={`grid grid-cols-1 sm:grid-cols-3 gap-2.5 ${currentTheme.cardInnerBg} p-3.5 rounded-xl border ${currentTheme.cardInnerBorder}`}>
                 <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Kelas:</span>
-                  <span className="font-black text-white text-xs">{namaKelas}</span>
+                  <span className={`text-[10px] ${currentTheme.cardSubtext} block font-medium`}>Kelas:</span>
+                  <span className={`font-black text-xs ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>{namaKelas}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Nomor Kelompok:</span>
-                  <span className="font-black text-cyan-300 text-xs">Kelompok {kelompokAktif}</span>
+                  <span className={`text-[10px] ${currentTheme.cardSubtext} block font-medium`}>Nomor Kelompok:</span>
+                  <span className="font-black text-cyan-400 text-xs">Kelompok {kelompokAktif}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Kasus yang Diteliti:</span>
-                  <span className="font-bold text-amber-300 text-xs">Kasus #{kasusAktif.id} ({kasusAktif.judul})</span>
+                  <span className={`text-[10px] ${currentTheme.cardSubtext} block font-medium`}>Kasus yang Diteliti:</span>
+                  <span className="font-bold text-amber-500 text-xs">Kasus #{kasusAktif.id} ({kasusAktif.judul})</span>
                 </div>
               </div>
 
               {/* Skenario Studi Kasus (Stukas) Lengkap */}
-              <div className="bg-gradient-to-br from-amber-500/10 via-slate-950 to-indigo-950/20 border border-amber-500/35 p-3.5 rounded-xl space-y-1.5 shadow-inner">
+              <div className={`${currentTheme.stukasBoxBg} border ${currentTheme.stukasBoxBorder} p-3.5 rounded-xl space-y-1.5 shadow-inner`}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.stukasTitleText}`}>
                     <span>📑</span> Studi Kasus (Stukas) yang Diteliti:
                   </span>
-                  <span className="text-[9px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold uppercase">
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full border font-bold uppercase ${currentTheme.stukasBadge}`}>
                     Kasus #{kasusAktif.id}
                   </span>
                 </div>
-                <h4 className="font-bold text-white text-xs sm:text-sm text-amber-200">
+                <h4 className={`font-bold text-xs sm:text-sm ${currentTheme.stukasTitleText}`}>
                   {kasusAktif.judul}
                 </h4>
-                <p className="text-slate-300 text-[11px] sm:text-xs leading-relaxed bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+                <p className={`text-[11px] sm:text-xs leading-relaxed p-2.5 rounded-lg border ${currentTheme.stukasDescBg} ${currentTheme.stukasDescText} ${currentTheme.cardBorder}`}>
                   {kasusAktif.deskripsi}
                 </p>
               </div>
 
               <div>
-                <span className="text-[11px] font-bold text-slate-300 block mb-1.5">Nama Anggota & Peran:</span>
-                <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
-                  <p>1. <strong className="text-white">{anggotaInterregator || "(Belum diisi)"}</strong> <span className="text-blue-400 text-[11px] font-semibold">(Interregator Chat AI)</span></p>
-                  <p>2. <strong className="text-white">{anggotaPencatat1 || "(Belum diisi)"}</strong> <span className="text-emerald-400 text-[11px] font-semibold">(Pencatat Bukti 1)</span></p>
-                  <p>3. <strong className="text-white">{anggotaPencatat2 || "(Belum diisi)"}</strong> <span className="text-teal-400 text-[11px] font-semibold">(Pencatat Bukti 2)</span></p>
-                  <p>4. <strong className="text-white">{anggotaAnalis1 || "(Belum diisi)"}</strong> <span className="text-purple-400 text-[11px] font-semibold">(Analis HAKI 1)</span></p>
-                  <p>5. <strong className="text-white">{anggotaAnalis2 || "(Belum diisi)"}</strong> <span className="text-indigo-400 text-[11px] font-semibold">(Analis HAKI 2)</span></p>
-                  <p>6. <strong className="text-white">{anggotaJuruBicara || "(Belum diisi / Opsional)"}</strong> <span className="text-amber-400 text-[11px] font-semibold">(Juru Bicara Presentasi)</span></p>
+                <span className={`text-[11px] font-bold block mb-1.5 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>Nama Anggota & Peran:</span>
+                <div className={`space-y-1.5 text-xs ${currentTheme.cardInnerBg} p-3 rounded-xl border ${currentTheme.cardInnerBorder}`}>
+                  <p>1. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaInterregator || "(Belum diisi)"}</strong> <span className="text-blue-500 text-[11px] font-semibold">(Interregator Chat AI)</span></p>
+                  <p>2. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaPencatat1 || "(Belum diisi)"}</strong> <span className="text-emerald-500 text-[11px] font-semibold">(Pencatat Bukti 1)</span></p>
+                  <p>3. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaPencatat2 || "(Belum diisi)"}</strong> <span className="text-teal-500 text-[11px] font-semibold">(Pencatat Bukti 2)</span></p>
+                  <p>4. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaAnalis1 || "(Belum diisi)"}</strong> <span className="text-purple-500 text-[11px] font-semibold">(Analis HAKI 1)</span></p>
+                  <p>5. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaAnalis2 || "(Belum diisi)"}</strong> <span className="text-indigo-500 text-[11px] font-semibold">(Analis HAKI 2)</span></p>
+                  <p>6. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaJuruBicara || "(Belum diisi / Opsional)"}</strong> <span className="text-amber-500 text-[11px] font-semibold">(Juru Bicara Presentasi)</span></p>
                 </div>
               </div>
             </div>
 
             {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (Ideal untuk HP Pencatat Bukti 1 & 2) */}
-            <div ref={sectionBuktiRef} className="bg-gradient-to-b from-emerald-950/20 via-slate-900/90 to-slate-900/90 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg shadow-emerald-500/5">
+            <div ref={sectionBuktiRef} className={`border border-emerald-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg ${
+              currentTheme.isLight 
+                ? "bg-white/95 shadow-sm" 
+                : currentTheme.id === "arcade"
+                ? "bg-[#180a30]/90"
+                : "bg-gradient-to-b from-emerald-950/20 via-slate-900/90 to-slate-900/90"
+            }`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-black text-xs text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-emerald-700' : 'text-emerald-300'}`}>
                     <span>🔍</span> BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG)
                   </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className={`text-[11px] ${currentTheme.cardSubtext} mt-0.5`}>
                     Instruksi: Tuliskan petunjuk kunci yang didapatkan dari Saksi AI.
                   </p>
                 </div>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-bold shrink-0">
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-500 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-bold shrink-0">
                   HP Pencatat Bukti
                 </span>
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     1. Petunjuk #1 (Mengenai Pelaku / Tindakan yang Dilakukan):
                   </label>
                   <textarea
@@ -1843,12 +1906,12 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "petunjuk1") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk1(e.target.value)}
                     placeholder="Contoh: Saksi menyebutkan pelaku mengunduh video lalu memotong watermark..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-emerald-500 transition-all resize-none"
+                    className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-2.5 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     2. Petunjuk #2 (Mengenai Aset / Karya yang Dirugikan):
                   </label>
                   <textarea
@@ -1858,12 +1921,12 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "petunjuk2") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk2(e.target.value)}
                     placeholder="Contoh: Karya berupa konten video sains eksperimen milik channel YouTube sekolah..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-emerald-500 transition-all resize-none"
+                    className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-2.5 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     3. Petunjuk #3 (Mengenai Lisensi / Status Hukum Karya):
                   </label>
                   <textarea
@@ -1873,31 +1936,37 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "petunjuk3") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk3(e.target.value)}
                     placeholder="Contoh: Karya asli memiliki hak cipta terdaftar dan tidak diizinkan untuk dikomersialkan tanpa izin..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-emerald-500 transition-all resize-none"
+                    className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-2.5 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
               </div>
             </div>
 
             {/* BAGIAN III: LEMBAR ANALISIS HAKI (Ideal untuk HP Analis HAKI 1 & 2) */}
-            <div ref={sectionAnalisisRef} className="bg-gradient-to-b from-purple-950/20 via-slate-900/90 to-slate-900/90 border border-purple-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg shadow-purple-500/5">
+            <div ref={sectionAnalisisRef} className={`border border-purple-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg ${
+              currentTheme.isLight 
+                ? "bg-white/95 shadow-sm" 
+                : currentTheme.id === "arcade"
+                ? "bg-[#180a30]/90"
+                : "bg-gradient-to-b from-purple-950/20 via-slate-900/90 to-slate-900/90"
+            }`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-black text-xs text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-purple-700' : 'text-purple-300'}`}>
                     <span>⚖️</span> BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4)
                   </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className={`text-[11px] ${currentTheme.cardSubtext} mt-0.5`}>
                     Jawablah pertanyaan analisis pasal dan jenis pelanggaran etika/hukum berdasarkan bukti.
                   </p>
                 </div>
-                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2.5 py-0.5 rounded-full font-bold shrink-0">
+                <span className="text-[10px] bg-purple-500/20 text-purple-500 border border-purple-500/40 px-2.5 py-0.5 rounded-full font-bold shrink-0">
                   HP Analis HAKI
                 </span>
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     1. Tindakan spesifik apa dari pelaku yang melanggar etika digital / hukum?
                   </label>
                   <textarea
@@ -1907,12 +1976,12 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "analisisTindakan") activeFieldRef.current = null; }}
                     onChange={(e) => setAnalisisTindakan(e.target.value)}
                     placeholder="Jelaskan tindakan konkrit pelaku yang melanggar aturan..."
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 transition-all resize-none"
+                    className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-3 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     2. Jenis Hak Kekayaan Intelektual atau Lisensi apa yang telah dilanggar?
                   </label>
                   {/* Selector Cepat */}
@@ -1926,7 +1995,11 @@ export default function InvestigasiPage() {
                             setJenisHaki(prev => prev ? `${prev}, ${tag}` : tag);
                           }
                         }}
-                        className="text-[10px] bg-slate-800/90 hover:bg-purple-900/50 text-purple-300 border border-purple-500/30 px-2.5 py-1 rounded-xl transition-all cursor-pointer font-medium hover:scale-105 active:scale-95"
+                        className={`text-[10px] border px-2.5 py-1 rounded-xl transition-all cursor-pointer font-medium hover:scale-105 active:scale-95 ${
+                          currentTheme.isLight
+                            ? "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                            : "bg-slate-800/90 hover:bg-purple-900/50 text-purple-300 border-purple-500/30"
+                        }`}
                       >
                         + {tag}
                       </button>
@@ -1939,12 +2012,12 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "jenisHaki") activeFieldRef.current = null; }}
                     onChange={(e) => setJenisHaki(e.target.value)}
                     placeholder="Pilih & Jelaskan: Hak Cipta, Lisensi CC, Hak Moral, atau Hak Ekonomi yang dilanggar..."
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 transition-all resize-none"
+                    className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-3 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     3. Siapa pihak yang paling dirugikan dan apa dampak kerugiannya (moral / ekonomi)?
                   </label>
                   <textarea
@@ -1954,26 +2027,32 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "analisisKerugian") activeFieldRef.current = null; }}
                     onChange={(e) => setAnalisisKerugian(e.target.value)}
                     placeholder="Uraikan siapa yang dirugikan serta bentuk kerugian materil/imateril yang dialami..."
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 transition-all resize-none"
+                    className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-3 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
               </div>
             </div>
 
             {/* BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI (HOTS - C5) */}
-            <div ref={sectionSolusiRef} className="bg-gradient-to-b from-amber-950/20 via-slate-900/90 to-slate-900/90 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg shadow-amber-500/5">
+            <div ref={sectionSolusiRef} className={`border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg ${
+              currentTheme.isLight 
+                ? "bg-white/95 shadow-sm" 
+                : currentTheme.id === "arcade"
+                ? "bg-[#180a30]/90"
+                : "bg-gradient-to-b from-amber-950/20 via-slate-900/90 to-slate-900/90"
+            }`}>
               <div>
-                <h3 className="font-black text-xs text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-amber-700' : 'text-amber-300'}`}>
                   <span>🛡️</span> BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI KASUS (HOTS - C5)
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className={`text-[11px] ${currentTheme.cardSubtext} mt-0.5`}>
                   Bagaimana cara menyelesaikan masalah ini secara adil dan etis?
                 </p>
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     1. Langkah penyelesaian adil untuk korban saat ini:
                   </label>
                   <textarea
@@ -1983,12 +2062,12 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "solusiAdil") activeFieldRef.current = null; }}
                     onChange={(e) => setSolusiAdil(e.target.value)}
                     placeholder="Contoh: Takedown konten bajakan, kompensasi ganti rugi, permohonan maaf terbuka..."
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/30 transition-all resize-none"
+                    className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-3 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     2. Aturan etis yang harus dipatuhi agar kita tidak menjadi pelaku pelanggaran HAKI di masa depan:
                   </label>
                   <textarea
@@ -1998,19 +2077,25 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "aturanEtis") activeFieldRef.current = null; }}
                     onChange={(e) => setAturanEtis(e.target.value)}
                     placeholder="Contoh: Selalu mencantumkan atribusi sumber, membeli lisensi legal, meminta izin tertulis..."
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/30 transition-all resize-none"
+                    className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-3 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
               </div>
             </div>
 
             {/* BAGIAN V: JURNAL REFLEKSI DIRI */}
-            <div ref={sectionRefleksiRef} className="bg-gradient-to-b from-rose-950/20 via-slate-900/90 to-slate-900/90 border border-rose-500/30 rounded-2xl p-4 sm:p-5 space-y-3 scroll-mt-14 shadow-lg shadow-rose-500/5">
-              <h3 className="font-black text-xs text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
+            <div ref={sectionRefleksiRef} className={`border border-rose-500/30 rounded-2xl p-4 sm:p-5 space-y-3 scroll-mt-14 shadow-lg ${
+              currentTheme.isLight 
+                ? "bg-white/95 shadow-sm" 
+                : currentTheme.id === "arcade"
+                ? "bg-[#180a30]/90"
+                : "bg-gradient-to-b from-rose-950/20 via-slate-900/90 to-slate-900/90"
+            }`}>
+              <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-rose-700' : 'text-rose-300'}`}>
                 <span>💭</span> BAGIAN V: JURNAL REFLEKSI DIRI
               </h3>
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className={`block text-[11px] font-semibold mb-1 ${currentTheme.isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   • Hal paling berharga yang saya pelajari hari ini tentang Hak Cipta:
                 </label>
                 <textarea
@@ -2020,7 +2105,7 @@ export default function InvestigasiPage() {
                   onBlur={() => { if (activeFieldRef.current === "refleksiDiri") activeFieldRef.current = null; }}
                   onChange={(e) => setRefleksiDiri(e.target.value)}
                   placeholder="Tuliskan pemahaman atau kesadaran baru yang kamu peroleh dari misi investigasi ini..."
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400/30 transition-all resize-none"
+                  className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-3 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                 />
               </div>
             </div>
@@ -2034,7 +2119,7 @@ export default function InvestigasiPage() {
               >
                 <span>🚀</span> {isSubmitted ? "Kirim Ulang Pembaruan LKPD" : "Kirim Final Berkas Investigasi ke Guru"}
               </button>
-              <p className="text-[10px] text-slate-400 text-center mt-2 font-medium">
+              <p className={`text-[10px] ${currentTheme.cardSubtext} text-center mt-2 font-medium`}>
                 Setiap ketikan Anda tersimpan otomatis di database room kelompok. Klik tombol di atas jika sudah yakin untuk mengirim laporan akhir.
               </p>
             </div>
@@ -2045,7 +2130,7 @@ export default function InvestigasiPage() {
       </div>
 
       {/* FIXED BOTTOM NAVIGATION BAR KHUSUS SMARTPHONE - Sangat Nyaman & Selalu Terjangkau */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/90 px-3 py-2 flex items-center justify-around shadow-2xl">
+      <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 ${currentTheme.mobileNavBg} backdrop-blur-xl border-t ${currentTheme.mobileNavBorder} px-3 py-2 flex items-center justify-around shadow-2xl`}>
         <button
           type="button"
           onClick={() => setActiveTabMobile("chat")}
@@ -2076,23 +2161,23 @@ export default function InvestigasiPage() {
 
       {/* Modal Rincian Kasus */}
       {showKasusModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-800 rounded-3xl max-w-lg w-full shadow-2xl p-6 border border-slate-700">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`${currentTheme.cardBg} rounded-3xl max-w-lg w-full shadow-2xl p-6 border ${currentTheme.cardBorder}`}>
             <div className="flex justify-between items-center mb-3">
-              <span className="px-2.5 py-1 bg-blue-600/20 text-blue-400 rounded-full text-xs font-bold border border-blue-500/30">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${currentTheme.stukasBadge}`}>
                 Kasus #{kasusAktif.id}
               </span>
-              <button onClick={() => setShowKasusModal(false)} className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer">
+              <button onClick={() => setShowKasusModal(false)} className="opacity-70 hover:opacity-100 text-lg font-bold cursor-pointer">
                 ✕
               </button>
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">{kasusAktif.judul}</h3>
-            <p className="text-xs text-slate-300 leading-relaxed bg-slate-900 p-4 rounded-xl border border-slate-700/80 mb-4">
+            <h3 className={`text-lg font-black mb-2 ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>{kasusAktif.judul}</h3>
+            <p className={`text-xs leading-relaxed p-4 rounded-xl border mb-4 ${currentTheme.stukasDescBg} ${currentTheme.stukasDescText} ${currentTheme.cardBorder}`}>
               {kasusAktif.deskripsi}
             </p>
             <button
               onClick={() => setShowKasusModal(false)}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-all cursor-pointer"
+              className={`w-full py-2.5 ${currentTheme.primaryBtn} font-bold rounded-xl text-xs transition-all cursor-pointer`}
             >
               Lanjutkan Investigasi
             </button>
