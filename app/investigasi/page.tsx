@@ -1274,7 +1274,7 @@ export default function InvestigasiPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900 text-slate-100 overflow-hidden">
+    <div className="flex flex-col h-screen h-[100dvh] bg-slate-900 text-slate-100 overflow-hidden">
       {/* Toast Notifikasi Multi-Device Room */}
       {roomToast && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -1283,14 +1283,13 @@ export default function InvestigasiPage() {
         </div>
       )}
 
-      {/* Top Navbar */}
+      {/* Top Navbar Responsif */}
       <header className="h-14 bg-slate-800 border-b border-slate-700 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2">
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <img src="/logo.png" alt="Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
           <div>
             <h1 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 sm:gap-2">
-              <span className="hidden xs:inline">BERKAS INVESTIGASI</span>
-              <span className="xs:hidden">INVESTIGASI</span>
+              <span className="hidden sm:inline">BERKAS INVESTIGASI</span>
               <span className="px-2 py-0.5 bg-blue-600/30 text-blue-400 text-[10px] rounded-full border border-blue-500/30 font-mono">
                 {namaKelas} • Kel {kelompokAktif}
               </span>
@@ -1308,7 +1307,7 @@ export default function InvestigasiPage() {
 
         {/* Countdown Timer Badge Interaktif Terpusat */}
         <div 
-          className={`px-2.5 sm:px-3 py-1 rounded-xl border flex items-center gap-2 text-xs font-mono font-bold transition-all shadow-sm ${
+          className={`px-2 sm:px-3 py-1 rounded-xl border flex items-center gap-1.5 sm:gap-2 text-xs font-mono font-bold transition-all shadow-sm shrink-0 ${
             isSubmitted
               ? "bg-emerald-950/80 border-emerald-500/50 text-emerald-300"
               : sisaDetik <= 0
@@ -1323,7 +1322,7 @@ export default function InvestigasiPage() {
             {isSubmitted ? "✅" : sisaDetik <= 0 ? "🚨" : sisaDetik <= 300 ? "⏳" : "⏱️"}
           </span>
           <div className="flex flex-col text-left leading-none">
-            <span className="text-[9px] uppercase tracking-wider text-slate-400 font-sans font-medium">
+            <span className="text-[9px] uppercase tracking-wider text-slate-400 font-sans font-medium hidden xs:inline">
               {isSubmitted ? "Terkirim" : sisaDetik <= 0 ? "Waktu Habis" : "Sisa Waktu"}
             </span>
             <span className="text-xs sm:text-sm font-black tracking-wider mt-0.5">
@@ -1332,35 +1331,15 @@ export default function InvestigasiPage() {
           </div>
         </div>
 
-        {/* Tab Toggle Mobile & Tombol Kasus */}
+        {/* Tombol Kasus & Keluar */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => setShowKasusModal(true)}
-            className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-600 flex items-center gap-1 font-semibold cursor-pointer"
+            className="text-[11px] sm:text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded-lg border border-slate-600 flex items-center gap-1 font-semibold cursor-pointer"
             title="Lihat Rincian Berkas Kasus"
           >
-            <span>📁</span> <span className="hidden sm:inline">Kasus #{kasusAktif.id}</span>
+            <span>📁</span> <span className="hidden xs:inline">Kasus #{kasusAktif.id}</span>
           </button>
-
-          {/* Tab Switcher Mobile */}
-          <div className="flex lg:hidden bg-slate-900 p-0.5 rounded-lg border border-slate-700 text-xs font-semibold">
-            <button
-              onClick={() => setActiveTabMobile("chat")}
-              className={`px-2.5 py-1 rounded-md transition-all ${
-                activeTabMobile === "chat" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              💬 Chat
-            </button>
-            <button
-              onClick={() => setActiveTabMobile("lembar")}
-              className={`px-2.5 py-1 rounded-md transition-all ${
-                activeTabMobile === "lembar" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              📝 LKPD
-            </button>
-          </div>
 
           <button
             onClick={() => {
@@ -1374,6 +1353,36 @@ export default function InvestigasiPage() {
           </button>
         </div>
       </header>
+
+      {/* MOBILE SEGMENTED TAB SWITCHER - 100% Terlihat Jelas & Nyaman Diklik di Layar HP */}
+      <div className="lg:hidden bg-slate-900 border-b border-slate-800 p-2 shrink-0 z-20 flex gap-2 shadow-md">
+        <button
+          type="button"
+          onClick={() => setActiveTabMobile("chat")}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTabMobile === "chat"
+              ? "bg-blue-600 text-white shadow-lg ring-2 ring-blue-400"
+              : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+          }`}
+        >
+          <span className="text-sm">💬</span>
+          <span>Interogasi AI (Chat)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTabMobile("lembar")}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
+            activeTabMobile === "lembar"
+              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg ring-2 ring-emerald-400"
+              : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+          }`}
+        >
+          <span className="text-sm">📝</span>
+          <span>Lembar LKPD</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        </button>
+      </div>
 
       {/* Sticky Alert Waktu Investigasi Habis */}
       {sisaDetik <= 0 && !isSubmitted && (
@@ -1454,7 +1463,7 @@ export default function InvestigasiPage() {
           </div>
 
           {/* Form Chat Input */}
-          <form onSubmit={kirimPesan} className="p-3 bg-slate-800 border-t border-slate-700 flex gap-2 shrink-0">
+          <form onSubmit={kirimPesan} className="p-3 bg-slate-800 border-t border-slate-700 flex gap-2 shrink-0 pb-16 lg:pb-3">
             <input
               type="text"
               value={inputUser}
@@ -1538,7 +1547,7 @@ export default function InvestigasiPage() {
           </div>
 
           {/* Form Konten LKPD (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 [scrollbar-width:thin] text-slate-200 text-xs">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 [scrollbar-width:thin] text-slate-200 text-xs pb-28 lg:pb-6">
             
             {/* Judul Berkas */}
             <div className="border-b border-slate-800 pb-3 text-center">
@@ -1815,6 +1824,36 @@ export default function InvestigasiPage() {
           </div>
         </div>
 
+      </div>
+
+      {/* FIXED BOTTOM NAVIGATION BAR KHUSUS SMARTPHONE - Sangat Nyaman & Selalu Terjangkau */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2 flex items-center justify-around shadow-2xl">
+        <button
+          type="button"
+          onClick={() => setActiveTabMobile("chat")}
+          className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTabMobile === "chat"
+              ? "bg-blue-600 text-white shadow font-black"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          <span className="text-base">💬</span>
+          <span>Tanya Saksi AI</span>
+        </button>
+        <div className="w-px h-5 bg-slate-700 mx-1"></div>
+        <button
+          type="button"
+          onClick={() => setActiveTabMobile("lembar")}
+          className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
+            activeTabMobile === "lembar"
+              ? "bg-emerald-600 text-white shadow font-black"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          <span className="text-base">📝</span>
+          <span>Lembar LKPD</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        </button>
       </div>
 
       {/* Modal Rincian Kasus */}

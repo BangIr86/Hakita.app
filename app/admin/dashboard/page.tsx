@@ -331,6 +331,15 @@ export default function AdminDashboard() {
     ])
   ).sort((a, b) => a - b);
 
+  // Auto-select kelompok pertama saat data dimuat agar tampilan mobile & desktop langsung menampilkan LKPD
+  useEffect(() => {
+    if (allKelompokKeys.length > 0) {
+      if (selectedKelompok === null || !allKelompokKeys.includes(selectedKelompok)) {
+        setSelectedKelompok(allKelompokKeys[0]);
+      }
+    }
+  }, [allKelompokKeys, selectedKelompok]);
+
   // Helper untuk mendapatkan data kelompok
   const getGroupMetadata = (k: number) => {
     const lkpd = filteredLkpd.find((l) => l.kelompok === k);
@@ -878,7 +887,7 @@ export default function AdminDashboard() {
                       </div>
 
                       {/* Tombol Aksi: Cetak PDF, Ekspor Excel, & Tayangkan ke Proyektor */}
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => {
                             setPresentationKelompok(selectedKelompok);
