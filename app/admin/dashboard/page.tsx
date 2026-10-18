@@ -145,13 +145,22 @@ export default function AdminDashboard() {
   const [evalError, setEvalError] = useState("");
   const [evalSuccess, setEvalSuccess] = useState("");
 
-  // State Modals
+  // State Modals & Kelola Kelas (CRUD & Reset)
   const [showKelasModal, setShowKelasModal] = useState(false);
+  const [editingKelas, setEditingKelas] = useState<KelasItem | null>(null);
   const [inputNamaKelasBaru, setInputNamaKelasBaru] = useState("");
   const [inputKodeKelasBaru, setInputKodeKelasBaru] = useState("");
   const [inputDurasiMenit, setInputDurasiMenit] = useState<number>(30);
   const [isSavingKelas, setIsSavingKelas] = useState(false);
   const [pesanSuksesKelas, setPesanSuksesKelas] = useState("");
+  const [pesanErrorKelas, setPesanErrorKelas] = useState("");
+  const [copiedKode, setCopiedKode] = useState<string | null>(null);
+
+  // State Konfirmasi Aksi (Hapus Kelas, Reset Sesi Data Kelas, Reset Default)
+  const [confirmDeleteKelas, setConfirmDeleteKelas] = useState<KelasItem | null>(null);
+  const [confirmResetSesiKelas, setConfirmResetSesiKelas] = useState<KelasItem | null>(null);
+  const [confirmResetDefault, setConfirmResetDefault] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   // State Tahap 5: Mode Presentasi Proyektor (Laptop Guru)
   const [showPresentationModal, setShowPresentationModal] = useState(false);
@@ -226,15 +235,40 @@ export default function AdminDashboard() {
         .order("created_at", { ascending: true });
 
       if (!sesiError && sesiData && sesiData.length > 0) {
-        setKelasList(sesiData.map((s: any) => ({
+        const mapped = sesiData.map((s: any) => ({
           kode_kelas: s.kode_kelas,
           nama_kelas: s.nama_kelas,
           durasi_menit: s.durasi_menit ? Number(s.durasi_menit) : 30
-        })));
+        }));
+        setKelasList(mapped);
+        try {
+          localStorage.setItem("hakita_custom_kelas", JSON.stringify(mapped));
+        } catch {}
+      } else {
+        // Fallback ke localStorage jika Supabase kosong atau offline
+        try {
+          const cached = localStorage.getItem("hakita_custom_kelas");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setKelasList(parsed);
+            }
+          }
+        } catch {}
       }
 
     } catch (err: any) {
       console.error("Error fetching admin data:", err);
+      // Fallback ke localStorage jika Supabase error
+      try {
+        const cached = localStorage.getItem("hakita_custom_kelas");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setKelasList(parsed);
+          }
+        }
+      } catch {}
       setError("Gagal mengambil data dari Supabase. Pastikan tabel chat_history, lkpd_reports, dan kelas_sesi sudah dibuat.");
     } finally {
       setIsLoading(false);
@@ -242,6 +276,17 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    // Muat cache lokal kelas saat pertama kali load agar instan
+    try {
+      const cached = localStorage.getItem("hakita_custom_kelas");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setKelasList(parsed);
+        }
+      }
+    } catch {}
+
     fetchData();
 
     // Auto-refresh data tiap 10 detik agar guru memantau secara real-time
@@ -261,7 +306,38 @@ export default function AdminDashboard() {
     setInputKodeKelasBaru(`${prefix}-${randomStr}`);
   };
 
-  // Handler Generate Kode Kelas Baru dengan Setting Durasi Timer
+  // Handler Salin Kode Kelas
+  const handleSalinKode = (kode: string) => {
+    try {
+      navigator.clipboard.writeText(kode);
+      setCopiedKode(kode);
+      setTimeout(() => setCopiedKode(null), 2000);
+    } catch {
+      // Fallback jika clipboard API diblokir browser
+    }
+  };
+
+  // Mulai Edit Kelas
+  const handleMulaiEditKelas = (kelas: KelasItem) => {
+    setEditingKelas(kelas);
+    setInputNamaKelasBaru(kelas.nama_kelas);
+    setInputKodeKelasBaru(kelas.kode_kelas);
+    setInputDurasiMenit(kelas.durasi_menit || 30);
+    setPesanSuksesKelas("");
+    setPesanErrorKelas("");
+  };
+
+  // Batal Edit Kelas
+  const handleBatalEditKelas = () => {
+    setEditingKelas(null);
+    setInputNamaKelasBaru("");
+    setInputKodeKelasBaru("");
+    setInputDurasiMenit(30);
+    setPesanSuksesKelas("");
+    setPesanErrorKelas("");
+  };
+
+  // Handler Simpan Kelas (Tambah Baru atau Update Hasil Edit)
   const handleSimpanKelasBaru = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputNamaKelasBaru.trim()) return;
@@ -270,44 +346,251 @@ export default function AdminDashboard() {
     const cleanKode = (inputKodeKelasBaru.trim() || `HAKI-${cleanNama}`).toUpperCase();
     const durasiNum = Number(inputDurasiMenit) || 30;
 
+    // Cek apakah kode kelas bentrok dengan kelas lain yang berbeda
+    const isDuplicate = kelasList.some(
+      (k) =>
+        k.kode_kelas.toUpperCase() === cleanKode &&
+        (!editingKelas || editingKelas.kode_kelas.toUpperCase() !== cleanKode)
+    );
+
+    if (isDuplicate) {
+      setPesanErrorKelas(`Kode kelas "${cleanKode}" sudah digunakan oleh kelas lain. Harap gunakan kode unik.`);
+      return;
+    }
+
     setIsSavingKelas(true);
     setPesanSuksesKelas("");
+    setPesanErrorKelas("");
 
     try {
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
-        const { error: insertError } = await supabase
-          .from("kelas_sesi")
-          .insert({
-            kode_kelas: cleanKode,
-            nama_kelas: cleanNama,
-            durasi_menit: durasiNum
-          });
+      const hasSupabase =
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda");
 
-        if (insertError) {
-          console.warn("Mencoba fallback insert tanpa durasi_menit jika kolom belum ada di DB:", insertError);
-          await supabase
+      if (editingKelas) {
+        // --- 1. MODE EDIT KELAS ---
+        if (hasSupabase) {
+          const { error: updateError } = await supabase
+            .from("kelas_sesi")
+            .update({
+              kode_kelas: cleanKode,
+              nama_kelas: cleanNama,
+              durasi_menit: durasiNum
+            })
+            .eq("kode_kelas", editingKelas.kode_kelas);
+
+          if (updateError) {
+            console.warn("Mencoba update fallback tanpa durasi_menit:", updateError);
+            await supabase
+              .from("kelas_sesi")
+              .update({
+                kode_kelas: cleanKode,
+                nama_kelas: cleanNama
+              })
+              .eq("kode_kelas", editingKelas.kode_kelas);
+          }
+
+          // Jika nama kelas ikut diubah, perbarui juga referensi kelas pada laporan LKPD & riwayat chat
+          if (editingKelas.nama_kelas !== cleanNama) {
+            await supabase
+              .from("lkpd_reports")
+              .update({ kelas: cleanNama })
+              .eq("kelas", editingKelas.nama_kelas);
+
+            await supabase
+              .from("chat_history")
+              .update({ kelas: cleanNama })
+              .eq("kelas", editingKelas.nama_kelas);
+          }
+        }
+
+        // Perbarui state kelasList
+        const updatedKelas = kelasList.map((k) =>
+          k.kode_kelas === editingKelas.kode_kelas
+            ? { kode_kelas: cleanKode, nama_kelas: cleanNama, durasi_menit: durasiNum }
+            : k
+        );
+        setKelasList(updatedKelas);
+        try {
+          localStorage.setItem("hakita_custom_kelas", JSON.stringify(updatedKelas));
+        } catch {}
+
+        // Sinkronkan nama kelas di tabel laporan lokal jika diubah
+        if (editingKelas.nama_kelas !== cleanNama) {
+          setLkpdList((prev) =>
+            prev.map((l) => (l.kelas === editingKelas.nama_kelas ? { ...l, kelas: cleanNama } : l))
+          );
+          setChats((prev) =>
+            prev.map((c) => (c.kelas === editingKelas.nama_kelas ? { ...c, kelas: cleanNama } : c))
+          );
+          if (selectedKelasFilter === editingKelas.nama_kelas) {
+            setSelectedKelasFilter(cleanNama);
+          }
+        }
+
+        setPesanSuksesKelas(`✅ Berhasil memperbarui Kelas ${cleanNama} (Durasi: ${durasiNum} Menit) dengan Kode: ${cleanKode}`);
+        setEditingKelas(null);
+        setInputNamaKelasBaru("");
+        setInputKodeKelasBaru("");
+        setInputDurasiMenit(30);
+      } else {
+        // --- 2. MODE TAMBAH KELAS BARU ---
+        if (hasSupabase) {
+          const { error: insertError } = await supabase
             .from("kelas_sesi")
             .insert({
               kode_kelas: cleanKode,
-              nama_kelas: cleanNama
+              nama_kelas: cleanNama,
+              durasi_menit: durasiNum
             });
+
+          if (insertError) {
+            console.warn("Mencoba fallback insert tanpa durasi_menit jika kolom belum ada di DB:", insertError);
+            await supabase
+              .from("kelas_sesi")
+              .insert({
+                kode_kelas: cleanKode,
+                nama_kelas: cleanNama
+              });
+          }
+        }
+
+        // Update state lokal
+        const newKelasList = [
+          ...kelasList.filter((k) => k.kode_kelas !== cleanKode),
+          { kode_kelas: cleanKode, nama_kelas: cleanNama, durasi_menit: durasiNum }
+        ];
+        setKelasList(newKelasList);
+        try {
+          localStorage.setItem("hakita_custom_kelas", JSON.stringify(newKelasList));
+        } catch {}
+
+        setPesanSuksesKelas(`✅ Berhasil membuat kelas ${cleanNama} (Durasi: ${durasiNum} Menit) dengan Kode: ${cleanKode}`);
+        setInputNamaKelasBaru("");
+        setInputKodeKelasBaru("");
+        setInputDurasiMenit(30);
+      }
+    } catch (err: any) {
+      console.error("Error saving class session:", err);
+      setPesanErrorKelas("Gagal menyimpan data kelas. Silakan periksa koneksi Supabase Anda.");
+    } finally {
+      setIsSavingKelas(false);
+    }
+  };
+
+  // Handler Hapus Kelas
+  const handleHapusKelas = async (kelas: KelasItem) => {
+    setIsActionLoading(true);
+    setPesanSuksesKelas("");
+    setPesanErrorKelas("");
+
+    try {
+      const hasSupabase =
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda");
+
+      if (hasSupabase) {
+        await supabase
+          .from("kelas_sesi")
+          .delete()
+          .eq("kode_kelas", kelas.kode_kelas);
+      }
+
+      const updated = kelasList.filter((k) => k.kode_kelas !== kelas.kode_kelas);
+      setKelasList(updated);
+      try {
+        localStorage.setItem("hakita_custom_kelas", JSON.stringify(updated));
+      } catch {}
+
+      if (selectedKelasFilter === kelas.nama_kelas) {
+        setSelectedKelasFilter("ALL");
+      }
+
+      if (editingKelas?.kode_kelas === kelas.kode_kelas) {
+        handleBatalEditKelas();
+      }
+
+      setPesanSuksesKelas(`🗑️ Kelas ${kelas.nama_kelas} (${kelas.kode_kelas}) berhasil dihapus.`);
+      setConfirmDeleteKelas(null);
+    } catch (err: any) {
+      console.error("Error deleting class:", err);
+      setPesanErrorKelas("Gagal menghapus kelas. Silakan coba lagi.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Handler Reset Sesi Investigasi Kelas (Hapus Laporan LKPD dan Chat khusus kelas ini)
+  const handleResetSesiKelas = async (kelas: KelasItem) => {
+    setIsActionLoading(true);
+    setPesanSuksesKelas("");
+    setPesanErrorKelas("");
+
+    try {
+      const hasSupabase =
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda");
+
+      if (hasSupabase) {
+        await supabase
+          .from("lkpd_reports")
+          .delete()
+          .eq("kelas", kelas.nama_kelas);
+
+        await supabase
+          .from("chat_history")
+          .delete()
+          .eq("kelas", kelas.nama_kelas);
+      }
+
+      // Bersihkan juga dari state lokal
+      setLkpdList((prev) => prev.filter((l) => l.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase()));
+      setChats((prev) => prev.filter((c) => c.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase()));
+
+      setPesanSuksesKelas(`🔄 Seluruh data investigasi LKPD dan riwayat chat interogasi untuk Kelas ${kelas.nama_kelas} berhasil dibersihkan! Kelas siap digunakan untuk sesi pembelajaran baru.`);
+      setConfirmResetSesiKelas(null);
+    } catch (err: any) {
+      console.error("Error resetting class session:", err);
+      setPesanErrorKelas("Gagal membersihkan data sesi kelas. Silakan coba lagi.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Handler Reset Seluruh Daftar Kelas ke Bawaan (Default: 9A, 9B, 9C)
+  const handleResetDefaultKelas = async () => {
+    setIsActionLoading(true);
+    setPesanSuksesKelas("");
+    setPesanErrorKelas("");
+
+    try {
+      const hasSupabase =
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda");
+
+      if (hasSupabase) {
+        for (const def of DEFAULT_KELAS_LIST) {
+          await supabase.from("kelas_sesi").upsert({
+            kode_kelas: def.kode_kelas,
+            nama_kelas: def.nama_kelas,
+            durasi_menit: def.durasi_menit || 30
+          }, { onConflict: "kode_kelas" });
         }
       }
 
-      // Update state lokal
-      setKelasList((prev) => {
-        const filtered = prev.filter((k) => k.kode_kelas !== cleanKode);
-        return [...filtered, { kode_kelas: cleanKode, nama_kelas: cleanNama, durasi_menit: durasiNum }];
-      });
+      setKelasList(DEFAULT_KELAS_LIST);
+      try {
+        localStorage.setItem("hakita_custom_kelas", JSON.stringify(DEFAULT_KELAS_LIST));
+      } catch {}
 
-      setPesanSuksesKelas(`✅ Berhasil membuat kelas ${cleanNama} (Durasi: ${durasiNum} Menit) dengan Kode: ${cleanKode}`);
-      setInputNamaKelasBaru("");
-      setInputKodeKelasBaru("");
-      setInputDurasiMenit(30);
-    } catch (err) {
-      console.error("Error creating class session:", err);
+      handleBatalEditKelas();
+      setPesanSuksesKelas(`🔄 Daftar kelas berhasil dikembalikan ke setelan awal sistem (Kelas 9A, 9B, 9C).`);
+      setConfirmResetDefault(false);
+    } catch (err: any) {
+      console.error("Error restoring default classes:", err);
+      setPesanErrorKelas("Gagal mengembalikan kelas default. Silakan coba lagi.");
     } finally {
-      setIsSavingKelas(false);
+      setIsActionLoading(false);
     }
   };
 
@@ -669,10 +952,14 @@ export default function AdminDashboard() {
                     <span>📊</span> Ekspor Excel
                   </button>
                   <button
-                    onClick={() => setShowKelasModal(true)}
-                    className="text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer"
+                    onClick={() => {
+                      handleBatalEditKelas();
+                      setShowKelasModal(true);
+                    }}
+                    className="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 cursor-pointer bg-cyan-500/15 border border-cyan-500/30 px-2.5 py-0.5 rounded-lg hover:bg-cyan-500/25 transition-all shadow-sm"
+                    title="Kelola Daftar Sesi Kelas, Tambah, Edit, Hapus, atau Reset LKPD"
                   >
-                    <span>➕</span> Buat Kelas
+                    <span>⚙️</span> Kelola Kelas
                   </button>
                 </div>
               </div>
@@ -1466,177 +1753,470 @@ export default function AdminDashboard() {
       </div>
 
 
-      {/* Modal Generate Kode Kelas Baru */}
+      {/* Modal Kelola Kelas Lengkap: Buat, Edit, Hapus, dan Reset Sesi */}
       {showKelasModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 border border-slate-200 relative">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🎓</span>
-                <h3 className="text-lg font-bold text-slate-800">Generate Sesi Kelas Baru</h3>
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 relative overflow-hidden flex flex-col max-h-[92vh]">
+            
+            {/* Header Modal */}
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white flex justify-between items-center border-b border-slate-700 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-xl shadow-inner">
+                  🎓
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
+                    Kelola Sesi & Akses Kelas
+                  </h3>
+                  <p className="text-xs text-slate-300 font-medium">
+                    Atur kelas baru, perbarui kode akses & durasi timer, hapus kelas, atau reset lembar kerja siswa.
+                  </p>
+                </div>
               </div>
               <button 
                 onClick={() => {
                   setShowKelasModal(false);
                   setPesanSuksesKelas("");
+                  setPesanErrorKelas("");
+                  handleBatalEditKelas();
                 }}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center font-bold text-sm transition-all"
+                title="Tutup Modal"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              Buat kode kelas baru untuk sesi pembelajaran kelas tertentu agar data investigasi dan LKPD siswa terpisah rapi per kelas.
-            </p>
-
-            <form onSubmit={handleSimpanKelasBaru} className="space-y-3 mb-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nama Kelas
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={inputNamaKelasBaru}
-                  onChange={(e) => {
-                    setInputNamaKelasBaru(e.target.value);
-                    if (!inputKodeKelasBaru || inputKodeKelasBaru.startsWith("HAKI-")) {
-                      setInputKodeKelasBaru(`HAKI-${e.target.value.trim().toUpperCase()}`);
-                    }
-                  }}
-                  placeholder="Contoh: 9D atau IX-B"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold text-slate-700">
-                    Kode Akses Kelas
-                  </label>
-                  <button
-                    type="button"
-                    onClick={generateRandomKodeKelas}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
-                  >
-                    <span>🎲</span> Acak / Random
-                  </button>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    required
-                    value={inputKodeKelasBaru}
-                    onChange={(e) => setInputKodeKelasBaru(e.target.value.toUpperCase())}
-                    placeholder="Contoh: HAKI-9D atau 9D-4K2X"
-                    className="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 font-mono uppercase tracking-wider focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={generateRandomKodeKelas}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-300 flex items-center gap-1 shrink-0 active:scale-95"
-                    title="Generate Kode Acak"
-                  >
-                    <span>🎲</span> Acak
-                  </button>
-                </div>
-                <span className="text-[10px] text-slate-400 mt-1 block">
-                  Klik <strong>"🎲 Acak"</strong> untuk menghasilkan kode unik otomatis, atau ketik kode manual.
-                </span>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                    <span>⏱️</span>
-                    <span>Durasi Waktu Investigasi Siswa</span>
-                  </label>
-                  <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                    {inputDurasiMenit} Menit
-                  </span>
-                </div>
-
-                {/* Preset Cepat Durasi Timer */}
-                <div className="grid grid-cols-5 gap-1.5 mb-2">
-                  {[15, 20, 30, 45, 60].map((menit) => (
-                    <button
-                      key={menit}
-                      type="button"
-                      onClick={() => setInputDurasiMenit(menit)}
-                      className={`py-1.5 px-1 rounded-xl text-xs font-bold transition-all border ${
-                        inputDurasiMenit === menit
-                          ? "bg-amber-600 text-white border-amber-600 shadow-sm"
-                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                      }`}
-                    >
-                      {menit}m
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={5}
-                    max={180}
-                    required
-                    value={inputDurasiMenit}
-                    onChange={(e) => setInputDurasiMenit(Math.max(1, parseInt(e.target.value) || 0))}
-                    className="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-blue-500"
-                    placeholder="Contoh: 30"
-                  />
-                  <span className="text-xs font-bold text-slate-600 shrink-0">Menit</span>
-                </div>
-                <span className="text-[10px] text-slate-400 mt-1 block">
-                  Timer hitung mundur ini akan aktif di layar investigasi siswa saat mereka menginterogasi saksi dan mengisi LKPD.
-                </span>
-              </div>
-
+            {/* Body Scrollable */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-5">
+              
+              {/* Notifikasi Pesan Sukses */}
               {pesanSuksesKelas && (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-medium">
-                  {pesanSuksesKelas}
+                <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-2xl text-xs font-semibold flex items-center justify-between gap-2 shadow-sm animate-fade-in">
+                  <span className="flex items-center gap-1.5">{pesanSuksesKelas}</span>
+                  <button onClick={() => setPesanSuksesKelas("")} className="text-emerald-600 hover:text-emerald-900 font-bold px-1.5">✕</button>
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={isSavingKelas || !inputNamaKelasBaru.trim()}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all shadow-md"
-              >
-                {isSavingKelas ? "Menyimpan..." : "Simpan & Aktifkan Kelas"}
-              </button>
-            </form>
+              {/* Notifikasi Pesan Error */}
+              {pesanErrorKelas && (
+                <div className="p-3 bg-rose-50 border border-rose-300 text-rose-800 rounded-2xl text-xs font-semibold flex items-center justify-between gap-2 shadow-sm animate-fade-in">
+                  <span className="flex items-center gap-1.5">⚠️ {pesanErrorKelas}</span>
+                  <button onClick={() => setPesanErrorKelas("")} className="text-rose-600 hover:text-rose-900 font-bold px-1.5">✕</button>
+                </div>
+              )}
 
-            <div className="border-t border-slate-100 pt-3">
-              <h4 className="text-xs font-bold text-slate-600 mb-2">Daftar Kode Kelas Aktif:</h4>
-              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                {kelasList.map((k) => (
-                  <div key={k.kode_kelas} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-slate-700">Kelas {k.nama_kelas}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1" title={`Batas waktu investigasi: ${k.durasi_menit || 30} menit`}>
-                        <span>⏱️</span> {k.durasi_menit || 30}m
+              {/* SECTION 1: FORM BUAT / EDIT KELAS */}
+              <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                editingKelas 
+                  ? "bg-amber-50/70 border-amber-300 shadow-sm" 
+                  : "bg-slate-50 border-slate-200"
+              }`}>
+                <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-200/80">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 ${
+                      editingKelas
+                        ? "bg-amber-200 text-amber-900 border border-amber-300 font-black"
+                        : "bg-blue-100 text-blue-800 border border-blue-200"
+                    }`}>
+                      {editingKelas ? `✏️ Mode Edit: Kelas ${editingKelas.nama_kelas}` : "➕ Buat Sesi Kelas Baru"}
+                    </span>
+                    {editingKelas && (
+                      <span className="text-[11px] text-amber-700 font-mono">
+                        (Kode saat ini: {editingKelas.kode_kelas})
                       </span>
-                      <span className="font-mono font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px]">
-                        {k.kode_kelas}
+                    )}
+                  </div>
+                  {editingKelas && (
+                    <button
+                      type="button"
+                      onClick={handleBatalEditKelas}
+                      className="text-xs text-slate-500 hover:text-slate-800 font-bold hover:underline cursor-pointer"
+                    >
+                      Batal Edit ✕
+                    </button>
+                  )}
+                </div>
+
+                <form onSubmit={handleSimpanKelasBaru} className="space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Nama Kelas <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={inputNamaKelasBaru}
+                        onChange={(e) => {
+                          setInputNamaKelasBaru(e.target.value);
+                          if (!editingKelas && (!inputKodeKelasBaru || inputKodeKelasBaru.startsWith("HAKI-"))) {
+                            setInputKodeKelasBaru(`HAKI-${e.target.value.trim().toUpperCase()}`);
+                          }
+                        }}
+                        placeholder="Contoh: 9D, 9E, IX-B"
+                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-blue-500 bg-white"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        Nama kelas yang akan tampil pada laporan LKPD.
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs font-bold text-slate-700">
+                          Kode Akses Siswa <span className="text-rose-500">*</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={generateRandomKodeKelas}
+                          className="text-[11px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                        >
+                          <span>🎲</span> Acak Otomatis
+                        </button>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          required
+                          value={inputKodeKelasBaru}
+                          onChange={(e) => setInputKodeKelasBaru(e.target.value.toUpperCase())}
+                          placeholder="Contoh: HAKI-9D"
+                          className="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 font-mono uppercase tracking-wider focus:outline-none focus:border-blue-500 bg-white font-bold"
+                        />
+                        <button
+                          type="button"
+                          onClick={generateRandomKodeKelas}
+                          className="px-2.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all shrink-0 active:scale-95"
+                          title="Generate Kode Acak"
+                        >
+                          🎲
+                        </button>
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        Kode unik yang dimasukkan siswa untuk masuk kelas.
                       </span>
                     </div>
                   </div>
-                ))}
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>⏱️</span>
+                        <span>Batas Waktu / Timer Investigasi Siswa</span>
+                      </label>
+                      <span className="text-xs font-extrabold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-300">
+                        {inputDurasiMenit} Menit
+                      </span>
+                    </div>
+
+                    {/* Presets Cepat */}
+                    <div className="grid grid-cols-5 gap-1.5 mb-2">
+                      {[15, 20, 30, 45, 60].map((menit) => (
+                        <button
+                          key={menit}
+                          type="button"
+                          onClick={() => setInputDurasiMenit(menit)}
+                          className={`py-1.5 px-1 rounded-xl text-xs font-bold transition-all border ${
+                            inputDurasiMenit === menit
+                              ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          {menit}m
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={5}
+                        max={180}
+                        required
+                        value={inputDurasiMenit}
+                        onChange={(e) => setInputDurasiMenit(Math.max(1, parseInt(e.target.value) || 0))}
+                        className="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-blue-500 bg-white"
+                        placeholder="Contoh: 30"
+                      />
+                      <span className="text-xs font-bold text-slate-600 shrink-0">Menit Investigasi</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={isSavingKelas || !inputNamaKelasBaru.trim()}
+                      className={`flex-1 py-2.5 font-bold rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-2 ${
+                        editingKelas
+                          ? "bg-amber-600 hover:bg-amber-700 text-white active:scale-98"
+                          : "bg-blue-600 hover:bg-blue-700 text-white active:scale-98"
+                      } disabled:opacity-50 cursor-pointer`}
+                    >
+                      {isSavingKelas ? (
+                        <span>Menyimpan...</span>
+                      ) : editingKelas ? (
+                        <span>💾 Simpan Perubahan Kelas</span>
+                      ) : (
+                        <span>➕ Simpan & Aktifkan Kelas Baru</span>
+                      )}
+                    </button>
+                    {editingKelas && (
+                      <button
+                        type="button"
+                        onClick={handleBatalEditKelas}
+                        className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
+
+              {/* SECTION 2: DAFTAR KELAS AKTIF DENGAN AKSI (EDIT, RESET SESI, HAPUS) */}
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-center px-1">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📋</span> Daftar Sesi Kelas Aktif ({kelasList.length})
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Klik ✏️ untuk edit nama/durasi, 🔄 untuk reset data LKPD, atau 🗑️ untuk menghapus kelas.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto space-y-2 pr-1 [scrollbar-width:thin]">
+                  {kelasList.map((k) => {
+                    const lkpdCount = lkpdList.filter((l) => l.kelas?.toUpperCase() === k.nama_kelas.toUpperCase()).length;
+                    const chatCount = chats.filter((c) => c.kelas?.toUpperCase() === k.nama_kelas.toUpperCase()).length;
+                    const isSelected = editingKelas?.kode_kelas === k.kode_kelas;
+
+                    return (
+                      <div
+                        key={k.kode_kelas}
+                        className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          isSelected
+                            ? "bg-amber-50 border-amber-400 shadow-sm ring-1 ring-amber-400"
+                            : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs"
+                        }`}
+                      >
+                        {/* Info Kelas */}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-slate-800 text-sm flex items-center gap-1">
+                              <span>🎓</span> Kelas {k.nama_kelas}
+                            </span>
+                            
+                            {/* Kode Badge dengan Tombol Salin */}
+                            <button
+                              type="button"
+                              onClick={() => handleSalinKode(k.kode_kelas)}
+                              className="font-mono font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-lg text-xs flex items-center gap-1 transition-all cursor-pointer"
+                              title="Klik untuk salin kode kelas ke clipboard"
+                            >
+                              <span>{k.kode_kelas}</span>
+                              <span className="text-[10px] text-blue-500">
+                                {copiedKode === k.kode_kelas ? "✅ Tersalin!" : "📋"}
+                              </span>
+                            </button>
+
+                            {/* Badge Durasi */}
+                            <span className="text-[11px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
+                              <span>⏱️</span> {k.durasi_menit || 30}m
+                            </span>
+                          </div>
+
+                          {/* Ringkasan Data Siswa Aktif di Kelas ini */}
+                          <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
+                            <span className={lkpdCount > 0 ? "text-emerald-700 font-semibold" : "text-slate-400"}>
+                              📄 {lkpdCount} LKPD terisi
+                            </span>
+                            <span>•</span>
+                            <span className={chatCount > 0 ? "text-blue-700 font-semibold" : "text-slate-400"}>
+                              💬 {chatCount} pesan interogasi
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Tombol Aksi Lengkap: Edit, Reset Sesi, Hapus */}
+                        <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                          {/* Tombol Edit */}
+                          <button
+                            type="button"
+                            onClick={() => handleMulaiEditKelas(k)}
+                            className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                            title="Edit nama kelas, kode akses, atau durasi waktu investigasi"
+                          >
+                            <span>✏️</span> Edit
+                          </button>
+
+                          {/* Tombol Reset Sesi Data Kelas */}
+                          <button
+                            type="button"
+                            onClick={() => setConfirmResetSesiKelas(k)}
+                            className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                            title="Reset / hapus seluruh jawaban LKPD dan riwayat chat kelas ini agar siap dipakai sesi berikutnya"
+                          >
+                            <span>🔄</span> Reset Sesi
+                          </button>
+
+                          {/* Tombol Hapus Kelas */}
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteKelas(k)}
+                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                            title="Hapus kelas ini dari daftar sesi aktif"
+                          >
+                            <span>🗑️</span> Hapus
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SECTION 3: RESET GLOBAL KE DEFAULT */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-slate-700 block">Kembalikan Daftar Kelas ke Setelan Bawaan?</span>
+                  <span className="text-slate-400 text-[11px]">
+                    Akan memulihkan daftar kelas awal sistem (Kelas 9A, 9B, 9C dengan timer 30 menit).
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConfirmResetDefault(true)}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-300 rounded-xl text-xs transition-all shrink-0 cursor-pointer shadow-xs"
+                >
+                  🔄 Reset ke Default (9A, 9B, 9C)
+                </button>
+              </div>
+
             </div>
 
+            {/* Footer Modal */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+              <button
+                onClick={() => {
+                  setShowKelasModal(false);
+                  setPesanSuksesKelas("");
+                  setPesanErrorKelas("");
+                  handleBatalEditKelas();
+                }}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-sm"
+              >
+                Tutup Jendela
+              </button>
+            </div>
 
-            <button
-              onClick={() => {
-                setShowKelasModal(false);
-                setPesanSuksesKelas("");
-              }}
-              className="w-full mt-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all"
-            >
-              Tutup
-            </button>
+            {/* DIALOG KONFIRMASI HAPUS KELAS */}
+            {confirmDeleteKelas && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-rose-200 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mx-auto">
+                    🗑️
+                  </div>
+                  <h4 className="text-base font-bold text-slate-800">
+                    Hapus Kelas {confirmDeleteKelas.nama_kelas}?
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Kelas dengan kode <strong className="font-mono text-slate-800">{confirmDeleteKelas.kode_kelas}</strong> akan dihapus dari daftar. Siswa tidak akan dapat masuk menggunakan kode ini lagi.
+                  </p>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      disabled={isActionLoading}
+                      onClick={() => setConfirmDeleteKelas(null)}
+                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isActionLoading}
+                      onClick={() => handleHapusKelas(confirmDeleteKelas)}
+                      className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-sm"
+                    >
+                      {isActionLoading ? "Menghapus..." : "Ya, Hapus Kelas"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* DIALOG KONFIRMASI RESET SESI KELAS */}
+            {confirmResetSesiKelas && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-amber-200 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mx-auto">
+                    🔄
+                  </div>
+                  <h4 className="text-base font-bold text-slate-800">
+                    Reset Sesi Kelas {confirmResetSesiKelas.nama_kelas}?
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Seluruh lembar kerja LKPD dan riwayat chat interogasi khusus <strong>Kelas {confirmResetSesiKelas.nama_kelas}</strong> akan dibersihkan permanen agar siap digunakan untuk sesi pembelajaran baru.
+                  </p>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      disabled={isActionLoading}
+                      onClick={() => setConfirmResetSesiKelas(null)}
+                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isActionLoading}
+                      onClick={() => handleResetSesiKelas(confirmResetSesiKelas)}
+                      className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-sm"
+                    >
+                      {isActionLoading ? "Membersihkan..." : "Ya, Bersihkan Sesi"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* DIALOG KONFIRMASI RESET DEFAULT KELAS */}
+            {confirmResetDefault && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-300 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-2xl mx-auto">
+                    ⚙️
+                  </div>
+                  <h4 className="text-base font-bold text-slate-800">
+                    Kembalikan Daftar Kelas Bawaan?
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Daftar kelas akan direset ke setelan awal: <strong>Kelas 9A, 9B, dan 9C</strong> (Timer masing-masing 30 menit).
+                  </p>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      disabled={isActionLoading}
+                      onClick={() => setConfirmResetDefault(false)}
+                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isActionLoading}
+                      onClick={handleResetDefaultKelas}
+                      className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-sm"
+                    >
+                      {isActionLoading ? "Memproses..." : "Ya, Reset ke Default"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

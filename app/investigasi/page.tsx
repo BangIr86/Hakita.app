@@ -302,6 +302,25 @@ export default function InvestigasiPage() {
       }
 
       if (!matchedKelas) {
+        // Cek juga dari localStorage hakita_custom_kelas (sinkronisasi jika guru membuat/edit kelas di browser)
+        try {
+          const localCustom = localStorage.getItem("hakita_custom_kelas");
+          if (localCustom) {
+            const parsedList = JSON.parse(localCustom);
+            if (Array.isArray(parsedList)) {
+              const found = parsedList.find(
+                (k: any) => k.kode_kelas?.toUpperCase() === cleanKode || k.nama_kelas?.toUpperCase() === cleanKode
+              );
+              if (found) {
+                matchedKelas = found.nama_kelas;
+                if (found.durasi_menit) matchedDurasi = Number(found.durasi_menit);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      if (!matchedKelas) {
         const fallback = DEFAULT_KELAS_LIST.find(
           (k) => k.kode_kelas.toUpperCase() === cleanKode || k.nama_kelas.toUpperCase() === cleanKode
         );

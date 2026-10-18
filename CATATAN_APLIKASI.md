@@ -317,10 +317,28 @@ hakita-app/
 
 ---
 
-## 10. KESIMPULAN FITUR UNGGULAN APLIKASI
+### ✅ Tahap 6: Fitur Kelola Sesi Kelas Lengkap (CRUD & Reset) [SELESAI]
+* **Lokasi Akses**: Dasbor Guru (`/admin/dashboard`) melalui tombol `⚙️ Kelola Kelas` di bilah navigasi.
+* **Kemampuan Lengkap**:
+  1. **Buat (Create)**:
+     * Guru dapat membuat sesi kelas baru dengan nama kelas (contoh: 9D, IX-B), kode akses unik (bisa diketik manual atau di-generate otomatis via tombol `🎲 Acak`), serta durasi timer investigasi siswa (preset 15m, 20m, 30m, 45m, 60m atau kustom).
+  2. **Edit (Update)**:
+     * Tombol `✏️ Edit` pada setiap kelas memungkinkan guru mengubah nama kelas, kode akses, dan durasi timer.
+     * Jika nama kelas diperbarui, referensi kelas pada tabel `lkpd_reports` dan `chat_history` otomatis tersinkronisasi.
+  3. **Hapus (Delete)**:
+     * Tombol `🗑️ Hapus` menghapus kelas dari daftar dengan dialog konfirmasi pengaman agar kode tidak lagi dapat dimasuki oleh siswa.
+  4. **Reset (2 Tingkat)**:
+     * **Reset Sesi Kelas (`🔄 Reset Sesi`)**: Membersihkan seluruh jawaban LKPD dan riwayat interogasi chat khusus untuk kelas tersebut dengan konfirmasi, sehingga kelas siap digunakan kembali oleh rombel/jam pelajaran berikutnya tanpa menghapus kelasnya.
+     * **Reset Global ke Default (`🔄 Reset ke Bawaan`)**: Memulihkan daftar kelas ke konfigurasi awal sistem (Kelas 9A, 9B, dan 9C).
+  5. **Penyimpanan Ganda & Offline Resilient**:
+     * Tersinkronisasi secara otomatis ke Supabase (`kelas_sesi`) serta di-cache ke `localStorage` (`hakita_custom_kelas`) sehingga kelas yang dibuat/diedit tetap dapat diverifikasi di layar siswa (`/investigasi`) baik dalam kondisi online maupun pengujian lokal.
+
+---
+
+## 11. KESIMPULAN FITUR UNGGULAN APLIKASI
 Hakita App telah mengintegrasikan siklus Problem-Based Learning (PBL) dan kolaborasi digital secara utuh:
 1. **Siswa**: Menjalankan investigasi interaktif dengan Saksi AI dalam ruangan kolaboratif multi-perangkat (*Multi-Device Room*), mengisi lembar LKPD digital 5 bagian secara terdistribusi (1 laptop interogasi, 1 HP catat bukti, 1 HP analisis pasal), dengan sinkronisasi waktu dan data tanpa konflik.
-2. **Guru**: Memantau aktivitas interogasi real-time, menayangkan presentasi hasil karya siswa ke proyektor kelas dengan 1 klik (*Mode Proyektor 5 Slide*), melihat pengerjaan asli siswa berdampingan dengan evaluasi AI berbasis UU Hak Cipta No. 28/2014 & rubrik HOTS, mengatur batas waktu per sesi kelas, mencetak berkas resmi PPG ber-kop, dan mengekspor rekap spreadsheet Excel.
+2. **Guru**: Memantau aktivitas interogasi real-time, menayangkan presentasi hasil karya siswa ke proyektor kelas dengan 1 klik (*Mode Proyektor 5 Slide*), melihat pengerjaan asli siswa berdampingan dengan evaluasi AI berbasis UU Hak Cipta No. 28/2014 & rubrik HOTS, mengelola kelas secara penuh (Buat, Edit, Hapus, Reset Sesi & Default), mengatur batas waktu per sesi kelas, mencetak berkas resmi PPG ber-kop, dan mengekspor rekap spreadsheet Excel.
 
 
 
