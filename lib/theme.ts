@@ -139,66 +139,74 @@ export const THEMES: Record<ThemeMode, ThemeStyles> = {
 
   ceria: {
     id: "ceria",
-    name: "Detektif Ceria",
-    icon: "☀️",
-    tagline: "Cerah, Energik & Ramah Mata (Gaya Edutech)",
+    name: "Detektif Ramah Mata",
+    icon: "🌿",
+    tagline: "Teduh, Lembut & Nyaman di Mata (Bebas Silau / Eye-Care)",
     isLight: true,
 
-    pageBg: "bg-gradient-to-br from-sky-100 via-indigo-50 to-amber-50",
-    orb1: "bg-sky-400/30",
-    orb2: "bg-amber-400/25",
-    orb3: "bg-emerald-400/25",
+    // Background & Ambient (Bebas Silau, Tanpa Bola Neon Glare)
+    pageBg: "bg-[#f4f6f8]",
+    orb1: "hidden opacity-0",
+    orb2: "hidden opacity-0",
+    orb3: "hidden opacity-0",
     textColor: "text-slate-800",
 
+    // Top Header / Navbar
     navBg: "bg-white/95 backdrop-blur-md shadow-sm",
-    navBorder: "border-indigo-100",
+    navBorder: "border-slate-200",
     navText: "text-slate-900",
-    navBadgeBg: "bg-blue-100",
-    navBadgeBorder: "border-blue-300",
-    navBadgeText: "text-blue-800",
+    navBadgeBg: "bg-slate-100",
+    navBadgeBorder: "border-slate-300",
+    navBadgeText: "text-slate-700",
 
-    cardBg: "bg-white/95 backdrop-blur-xl shadow-xl shadow-indigo-500/10",
-    cardBorder: "border-indigo-100",
-    cardTitle: "text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-indigo-700 to-teal-700",
+    // Card / Container Global
+    cardBg: "bg-white shadow-sm",
+    cardBorder: "border-slate-200",
+    cardTitle: "text-slate-900 font-extrabold",
     cardSubtext: "text-slate-600",
-    cardInnerBg: "bg-indigo-50/60",
-    cardInnerBorder: "border-indigo-100",
+    cardInnerBg: "bg-slate-50",
+    cardInnerBorder: "border-slate-200",
 
+    // Input & Buttons
     inputBg: "bg-white",
-    inputBorder: "border-indigo-200 focus:border-blue-600 focus:ring-blue-600/20",
+    inputBorder: "border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100",
     inputText: "text-slate-900 placeholder:text-slate-400",
-    primaryBtn: "bg-gradient-to-r from-blue-600 via-indigo-600 to-teal-600 hover:from-blue-700 hover:via-indigo-700 hover:to-teal-700 text-white shadow-blue-500/30",
-    secondaryBtn: "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200",
+    primaryBtn: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm",
+    secondaryBtn: "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300",
 
-    chatPanelBg: "bg-indigo-50/40",
-    chatBubbleAiBg: "bg-white border-indigo-100 shadow-sm",
-    chatBubbleAiText: "text-slate-800 font-medium",
-    chatBubbleAiBorder: "border-indigo-100",
-    chatBubbleUserBg: "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/20 font-medium",
+    // Chat Panel (Left)
+    chatPanelBg: "bg-[#f8fafc]",
+    chatBubbleAiBg: "bg-white border-slate-200 shadow-sm",
+    chatBubbleAiText: "text-slate-800 leading-relaxed font-normal",
+    chatBubbleAiBorder: "border-slate-200",
+    chatBubbleUserBg: "bg-indigo-600 text-white shadow-sm font-medium",
     chatBubbleUserText: "text-white",
     chatInputBg: "bg-white",
-    chatInputBorder: "border-indigo-200 focus:border-blue-600 focus:ring-blue-600/20",
+    chatInputBorder: "border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100",
     chatInputText: "text-slate-900 placeholder:text-slate-400",
 
-    lkpdPanelBg: "bg-slate-50/90",
-    lkpdHeaderBg: "bg-white border-indigo-100 shadow-sm",
-    lkpdHeaderText: "text-slate-800",
+    // LKPD Panel (Right)
+    lkpdPanelBg: "bg-[#eef2f6]",
+    lkpdHeaderBg: "bg-white border-b border-slate-200 shadow-sm",
+    lkpdHeaderText: "text-slate-800 font-bold",
     lkpdCardBg: "bg-white shadow-sm",
-    lkpdCardBorder: "border-indigo-100",
-    lkpdCardText: "text-slate-700",
+    lkpdCardBorder: "border-slate-200",
+    lkpdCardText: "text-slate-800",
     lkpdInputBg: "bg-white",
-    lkpdInputBorder: "border-indigo-200 focus:border-blue-500 focus:ring-blue-500/20",
+    lkpdInputBorder: "border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100",
     lkpdInputText: "text-slate-900 placeholder:text-slate-400",
 
-    stukasBoxBg: "bg-gradient-to-br from-amber-50 via-white to-indigo-50/60 shadow-md shadow-amber-500/5",
-    stukasBoxBorder: "border-amber-300",
-    stukasTitleText: "text-amber-900",
-    stukasDescBg: "bg-amber-50/60",
-    stukasDescText: "text-slate-800 font-medium",
-    stukasBadge: "bg-amber-100 border-amber-300 text-amber-900",
+    // Stukas Box (Soft Warm Parchment / Cream)
+    stukasBoxBg: "bg-amber-50/70 border-amber-200/90 shadow-sm",
+    stukasBoxBorder: "border-amber-200/90",
+    stukasTitleText: "text-amber-950 font-bold",
+    stukasDescBg: "bg-white/95",
+    stukasDescText: "text-slate-800 leading-relaxed font-normal",
+    stukasBadge: "bg-amber-100 border-amber-300 text-amber-900 font-bold",
 
-    mobileNavBg: "bg-white/95 border-indigo-100 shadow-md",
-    mobileNavBorder: "border-indigo-100"
+    // Mobile Bottom Bar
+    mobileNavBg: "bg-white/95 border-slate-200 shadow-lg",
+    mobileNavBorder: "border-slate-200"
   },
 
   arcade: {

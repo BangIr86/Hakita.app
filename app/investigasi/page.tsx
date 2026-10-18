@@ -1158,9 +1158,13 @@ export default function InvestigasiPage() {
   if (!kodeKelasAktif) {
     return (
       <div className={`min-h-screen ${currentTheme.pageBg} flex flex-col items-center justify-center p-4 sm:p-6 ${currentTheme.textColor} relative overflow-hidden transition-colors duration-300`}>
-        {/* Background Ambient Orbs */}
-        <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
-        <div className={`absolute -bottom-10 -right-10 w-80 h-80 ${currentTheme.orb2} rounded-full blur-3xl pointer-events-none`}></div>
+        {/* Background Ambient Orbs (Hanya aktif di Mode Gelap/Arcade) */}
+        {!currentTheme.isLight && (
+          <>
+            <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
+            <div className={`absolute -bottom-10 -right-10 w-80 h-80 ${currentTheme.orb2} rounded-full blur-3xl pointer-events-none`}></div>
+          </>
+        )}
 
         {/* Top Controls: Kembali & Theme Switcher */}
         <div className="absolute top-6 left-6 right-6 md:top-8 md:left-8 md:right-8 flex items-center justify-between z-20">
@@ -1181,7 +1185,7 @@ export default function InvestigasiPage() {
           
           <div className={`inline-flex items-center gap-1.5 px-3 py-1 border text-[11px] font-bold rounded-full mb-3 ${
             currentTheme.isLight 
-              ? "bg-blue-100 border-blue-300 text-blue-800" 
+              ? "bg-slate-100 border-slate-300 text-slate-800" 
               : currentTheme.id === "arcade"
               ? "bg-fuchsia-950/60 border-fuchsia-500/40 text-pink-300"
               : "bg-blue-500/15 border-blue-500/30 text-cyan-300"
@@ -1189,7 +1193,7 @@ export default function InvestigasiPage() {
             <span>🕵️‍♂️</span> Portal Investigasi Siswa
           </div>
 
-          <h1 className={`text-2xl sm:text-3xl font-black mb-2 ${currentTheme.cardTitle}`}>
+          <h1 className={`text-2xl sm:text-3xl font-black mb-2 ${currentTheme.isLight ? 'text-indigo-950' : currentTheme.cardTitle}`}>
             DETEKTIF HAKI
           </h1>
           <p className={`${currentTheme.cardSubtext} text-xs sm:text-sm mb-6 leading-relaxed`}>
@@ -1197,13 +1201,17 @@ export default function InvestigasiPage() {
           </p>
 
           {sesiHabisAlert && (
-            <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-300 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className={`mb-5 p-4 rounded-2xl border-2 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-300 ${
+              currentTheme.isLight
+                ? "bg-amber-50 border-amber-300 text-amber-900"
+                : "bg-amber-500/10 border-2 border-amber-500/30 text-amber-300"
+            }`}>
               <div className="flex items-start gap-2.5">
                 <span className="text-2xl shrink-0">⏰</span>
                 <div>
-                  <h4 className="font-bold text-amber-400 text-sm mb-1">Sesi Investigasi Telah Berakhir</h4>
-                  <p className="text-amber-200/90 leading-relaxed">{sesiHabisAlert}</p>
-                  <p className="text-[11px] text-amber-400/80 mt-2 font-medium">
+                  <h4 className={`font-bold text-sm mb-1 ${currentTheme.isLight ? 'text-amber-900' : 'text-amber-400'}`}>Sesi Investigasi Telah Berakhir</h4>
+                  <p className={`leading-relaxed ${currentTheme.isLight ? 'text-amber-800' : 'text-amber-200/90'}`}>{sesiHabisAlert}</p>
+                  <p className={`text-[11px] mt-2 font-medium ${currentTheme.isLight ? 'text-amber-700' : 'text-amber-400/80'}`}>
                     Semua progres dan berkas jawaban LKPD telah tersimpan di dashboard guru. Hubungi guru Anda jika sesi kelas diperpanjang.
                   </p>
                 </div>
@@ -1227,12 +1235,12 @@ export default function InvestigasiPage() {
                 placeholder="Contoh: HAKI-9A"
                 className={`w-full ${currentTheme.inputBg} border rounded-2xl px-4 py-3.5 ${currentTheme.inputText} font-mono uppercase tracking-widest text-center text-lg font-bold focus:outline-none transition-all ${
                   errorKelas 
-                    ? "border-red-500 bg-red-950/20 focus:ring-2 focus:ring-red-500" 
+                    ? currentTheme.isLight ? "border-red-500 bg-red-50 text-red-900 focus:ring-2 focus:ring-red-400" : "border-red-500 bg-red-950/20 focus:ring-2 focus:ring-red-500" 
                     : currentTheme.inputBorder
                 }`}
               />
               {errorKelas && (
-                <p className="text-red-400 text-xs mt-2 font-medium flex items-center gap-1">
+                <p className={`${currentTheme.isLight ? 'text-red-600' : 'text-red-400'} text-xs mt-2 font-medium flex items-center gap-1`}>
                   <span>⚠️</span> {errorKelas}
                 </p>
               )}
@@ -1255,9 +1263,13 @@ export default function InvestigasiPage() {
   if (!kelompokAktif) {
     return (
       <div className={`min-h-screen ${currentTheme.pageBg} flex flex-col items-center justify-center p-4 sm:p-6 ${currentTheme.textColor} relative overflow-hidden transition-colors duration-300`}>
-        {/* Background Ambient Orbs */}
-        <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
-        <div className={`absolute -bottom-10 -left-10 w-80 h-80 ${currentTheme.orb2} rounded-full blur-3xl pointer-events-none`}></div>
+        {/* Background Ambient Orbs (Hanya aktif di Mode Gelap/Arcade) */}
+        {!currentTheme.isLight && (
+          <>
+            <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
+            <div className={`absolute -bottom-10 -left-10 w-80 h-80 ${currentTheme.orb2} rounded-full blur-3xl pointer-events-none`}></div>
+          </>
+        )}
 
         {/* Top Controls */}
         <div className="absolute top-6 left-6 right-6 md:top-8 md:left-8 md:right-8 flex items-center justify-between z-20">
@@ -1281,14 +1293,18 @@ export default function InvestigasiPage() {
         </div>
 
         <div className="text-center mb-8 mt-16 md:mt-0 z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-emerald-500/20 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider shadow-inner">
+          <div className={`inline-flex items-center gap-2 px-4 py-1.5 border text-xs font-bold rounded-full mb-3 uppercase tracking-wider ${
+            currentTheme.isLight
+              ? "bg-slate-100 border-slate-300 text-slate-800"
+              : "bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-emerald-500/20 border-blue-500/30 text-blue-400 shadow-inner"
+          }`}>
             <span>Sesi Kelas: {namaKelas} ({kodeKelasAktif})</span>
             <span>•</span>
-            <span className="text-amber-500 font-extrabold flex items-center gap-1">
+            <span className={`${currentTheme.isLight ? 'text-amber-800' : 'text-amber-500'} font-extrabold flex items-center gap-1`}>
               <span>⏱️</span> {durasiMenit} Menit
             </span>
           </div>
-          <h1 className={`text-3xl md:text-5xl font-black mb-2 ${currentTheme.cardTitle}`}>
+          <h1 className={`text-3xl md:text-5xl font-black mb-2 ${currentTheme.isLight ? 'text-indigo-950' : currentTheme.cardTitle}`}>
             Identifikasi Tim Detektif
           </h1>
           <p className={`${currentTheme.cardSubtext} text-xs sm:text-sm md:text-base max-w-md mx-auto leading-relaxed`}>
@@ -1306,13 +1322,21 @@ export default function InvestigasiPage() {
                 disabled={isJoiningRoom}
                 className={`relative py-6 sm:py-7 px-4 sm:px-5 rounded-3xl shadow-xl transition-all duration-300 flex flex-col items-center gap-2 group cursor-pointer border ${
                   isRoomActive
-                    ? "bg-gradient-to-b from-emerald-500/15 to-teal-500/25 border-emerald-500/50 hover:border-emerald-400 shadow-emerald-500/10 ring-1 ring-emerald-500/30"
+                    ? currentTheme.isLight
+                      ? "bg-emerald-50 border-emerald-300 shadow-sm ring-1 ring-emerald-300"
+                      : "bg-gradient-to-b from-emerald-500/15 to-teal-500/25 border-emerald-500/50 hover:border-emerald-400 shadow-emerald-500/10 ring-1 ring-emerald-500/30"
+                    : currentTheme.isLight
+                    ? "bg-white border-slate-200 hover:border-indigo-400 shadow-sm"
                     : `${currentTheme.cardBg} ${currentTheme.cardBorder} hover:border-cyan-400`
                 } hover:-translate-y-2 active:scale-95 disabled:opacity-50`}
               >
                 {isRoomActive && (
-                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-emerald-500/20 text-emerald-500 border border-emerald-500/40 text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className={`absolute top-3 right-3 px-2 py-0.5 border text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm ${
+                    currentTheme.isLight
+                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                      : "bg-emerald-500/20 text-emerald-500 border-emerald-500/40"
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     Room Aktif
                   </span>
                 )}
@@ -1344,8 +1368,10 @@ export default function InvestigasiPage() {
   if (kelompokAktif && !isIdentitasLengkap) {
     return (
       <div className={`min-h-screen ${currentTheme.pageBg} flex flex-col items-center justify-center p-4 sm:p-6 ${currentTheme.textColor} relative overflow-hidden transition-colors duration-300`}>
-        {/* Background Ambient Orbs */}
-        <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
+        {/* Background Ambient Orbs (Hanya aktif di Mode Gelap/Arcade) */}
+        {!currentTheme.isLight && (
+          <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none`}></div>
+        )}
 
         {/* Top Controls */}
         <div className="absolute top-6 left-6 right-6 md:top-8 md:left-8 md:right-8 flex items-center justify-between z-20">
@@ -1372,12 +1398,12 @@ export default function InvestigasiPage() {
           <div className="text-center mb-5">
             <div className={`inline-flex items-center gap-2 px-3 py-1 border text-xs font-bold rounded-full mb-2 uppercase tracking-wider ${
               currentTheme.isLight
-                ? "bg-blue-100 border-blue-300 text-blue-800"
+                ? "bg-slate-100 border-slate-300 text-slate-800"
                 : "bg-blue-500/15 border-blue-500/30 text-blue-300"
             }`}>
               <span>Kelas {namaKelas} • Kelompok {kelompokAktif}</span>
               <span>•</span>
-              <span className="text-amber-500 flex items-center gap-1 font-bold">
+              <span className={`${currentTheme.isLight ? 'text-amber-800' : 'text-amber-500'} flex items-center gap-1 font-bold`}>
                 <span>⏱️</span> {durasiMenit} Menit
               </span>
             </div>
@@ -1387,13 +1413,13 @@ export default function InvestigasiPage() {
           </div>
 
           {/* Card Studi Kasus (Stukas) Kelompok */}
-          <div className={`mb-4 p-4 ${currentTheme.stukasBoxBg} border-2 ${currentTheme.stukasBoxBorder} rounded-2xl shadow-xl relative overflow-hidden transition-all`}>
+          <div className={`mb-4 p-4 ${currentTheme.stukasBoxBg} border-2 ${currentTheme.stukasBoxBorder} rounded-2xl shadow-sm relative overflow-hidden transition-all`}>
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 border text-[10px] font-bold rounded-full uppercase tracking-wider ${currentTheme.stukasBadge}`}>
                 <span>📁</span> Studi Kasus (Stukas) Kelompok #{kasusAktif.id}
               </span>
               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
-                currentTheme.isLight ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-cyan-950/60 text-cyan-400 border-cyan-500/30"
+                currentTheme.isLight ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-cyan-950/60 text-cyan-400 border-cyan-500/30"
               }`}>
                 Fokus Kasus
               </span>
@@ -1407,9 +1433,9 @@ export default function InvestigasiPage() {
           </div>
 
           {/* Banner Tips Multi-Device */}
-          <div className={`mb-4 p-3.5 rounded-2xl text-[11px] flex items-start gap-2 shadow-inner border ${
+          <div className={`mb-4 p-3.5 rounded-2xl text-[11px] flex items-start gap-2 shadow-sm border ${
             currentTheme.isLight
-              ? "bg-blue-50 border-blue-200 text-blue-900"
+              ? "bg-indigo-50/70 border-indigo-200 text-indigo-950"
               : "bg-blue-950/50 border-blue-500/30 text-blue-200"
           }`}>
             <span className="text-base shrink-0">💡</span>
@@ -1420,8 +1446,8 @@ export default function InvestigasiPage() {
           
           <form onSubmit={handleMulaiInvestigasi} className="space-y-3">
             <div>
-              <label className="block text-xs font-bold text-blue-500 mb-1 flex items-center gap-1.5">
-                <span>💻</span> 1. Anggota 1 (Interregator Chat AI) <span className="text-red-400">*</span>
+              <label className={`block text-xs font-bold mb-1 flex items-center gap-1.5 ${currentTheme.isLight ? 'text-indigo-800' : 'text-blue-400'}`}>
+                <span>💻</span> 1. Anggota 1 (Interregator Chat AI) <span className="text-red-500">*</span>
               </label>
               <input 
                 type="text"
@@ -1434,7 +1460,7 @@ export default function InvestigasiPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-emerald-500 mb-1 flex items-center gap-1.5">
+              <label className={`block text-xs font-bold mb-1 flex items-center gap-1.5 ${currentTheme.isLight ? 'text-emerald-800' : 'text-emerald-400'}`}>
                 <span>🔍</span> 2. Anggota 2 (Pencatat Bukti 1)
               </label>
               <input 
@@ -1447,7 +1473,7 @@ export default function InvestigasiPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-teal-500 mb-1 flex items-center gap-1.5">
+              <label className={`block text-xs font-bold mb-1 flex items-center gap-1.5 ${currentTheme.isLight ? 'text-emerald-800' : 'text-emerald-400'}`}>
                 <span>🔍</span> 3. Anggota 3 (Pencatat Bukti 2)
               </label>
               <input 
@@ -1460,7 +1486,7 @@ export default function InvestigasiPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-purple-500 mb-1 flex items-center gap-1.5">
+              <label className={`block text-xs font-bold mb-1 flex items-center gap-1.5 ${currentTheme.isLight ? 'text-purple-800' : 'text-purple-400'}`}>
                 <span>⚖️</span> 4. Anggota 4 (Analis HAKI 1)
               </label>
               <input 
@@ -1473,7 +1499,7 @@ export default function InvestigasiPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-indigo-500 mb-1 flex items-center gap-1.5">
+              <label className={`block text-xs font-bold mb-1 flex items-center gap-1.5 ${currentTheme.isLight ? 'text-purple-800' : 'text-purple-400'}`}>
                 <span>⚖️</span> 5. Anggota 5 (Analis HAKI 2)
               </label>
               <input 
@@ -1486,7 +1512,7 @@ export default function InvestigasiPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-amber-500 mb-1 flex items-center gap-1.5">
+              <label className={`block text-xs font-bold mb-1 flex items-center gap-1.5 ${currentTheme.isLight ? 'text-amber-800' : 'text-amber-400'}`}>
                 <span>📢</span> 6. Anggota 6 (Juru Bicara Presentasi)
               </label>
               <input 
@@ -1536,10 +1562,14 @@ export default function InvestigasiPage() {
               </span>
               {/* Badge Multi-Device Room */}
               <span 
-                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-[10px] font-bold rounded-full shadow-sm" 
+                className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 border text-[10px] font-bold rounded-full shadow-sm ${
+                  currentTheme.isLight
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                    : "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                }`} 
                 title={isRealtimeConnected ? "Realtime WebSocket Terhubung: Kolaborasi Multi-Device Aktif" : "Kolaborasi Multi-Device Aktif (Auto-Sync Polling)"}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 Multi-Device Room
               </span>
             </h1>
@@ -1556,7 +1586,7 @@ export default function InvestigasiPage() {
               : sisaDetik <= 300
               ? "bg-gradient-to-r from-amber-950/90 to-orange-950/90 border-amber-500 text-amber-300 animate-pulse shadow-md shadow-amber-500/20"
               : currentTheme.isLight
-              ? "bg-indigo-50 border-indigo-200 text-indigo-900"
+              ? "bg-slate-100 border-slate-300 text-slate-800"
               : "bg-gradient-to-r from-slate-900 to-indigo-950 border-indigo-500/40 text-cyan-300"
           }`} 
           title={`Batas waktu investigasi kelas: ${durasiMenit} menit (Tersinkronisasi ke seluruh perangkat tim)`}
@@ -1608,13 +1638,17 @@ export default function InvestigasiPage() {
       </header>
 
       {/* MOBILE SEGMENTED TAB SWITCHER - 100% Terlihat Jelas & Nyaman Diklik di Layar HP */}
-      <div className={`lg:hidden ${currentTheme.navBg} border-b ${currentTheme.navBorder} p-2 shrink-0 z-20 flex gap-2 shadow-md`}>
+      <div className={`lg:hidden ${currentTheme.navBg} border-b ${currentTheme.navBorder} p-2 shrink-0 z-20 flex gap-2 shadow-sm`}>
         <button
           type="button"
           onClick={() => setActiveTabMobile("chat")}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTabMobile === "chat"
-              ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25 ring-2 ring-cyan-400"
+              ? currentTheme.isLight
+                ? "bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300"
+                : "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25 ring-2 ring-cyan-400"
+              : currentTheme.isLight
+              ? "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300"
               : "bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/80"
           }`}
         >
@@ -1627,7 +1661,11 @@ export default function InvestigasiPage() {
           onClick={() => setActiveTabMobile("lembar")}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
             activeTabMobile === "lembar"
-              ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-400"
+              ? currentTheme.isLight
+                ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-300"
+                : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-400"
+              : currentTheme.isLight
+              ? "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300"
               : "bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/80"
           }`}
         >
@@ -1665,7 +1703,7 @@ export default function InvestigasiPage() {
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
               <span className={`font-bold ${currentTheme.isLight ? 'text-slate-800' : 'text-slate-200'}`}>Saksi Mata Digital (AI)</span>
-              <span className="text-[10px] bg-blue-500/20 text-cyan-400 px-2 py-0.5 rounded-full border border-blue-500/30 hidden sm:inline font-mono font-bold">
+              <span className={`text-[10px] ${currentTheme.isLight ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-blue-500/20 text-cyan-400 border-blue-500/30'} px-2 py-0.5 rounded-full border hidden sm:inline font-mono font-bold`}>
                 Laptop Interregator
               </span>
             </div>
@@ -1682,7 +1720,7 @@ export default function InvestigasiPage() {
                   Saksi ini memegang petunjuk rahasia mengenai kasus <strong>"{kasusAktif.judul}"</strong>. Tanyakan siapa pelakunya, bukti apa yang ditemukan, atau lisensi apa yang dilanggar!
                 </p>
                 <div className={`text-left text-xs ${currentTheme.cardInnerBg} p-3.5 rounded-2xl border ${currentTheme.cardInnerBorder} space-y-1.5 shadow-inner`}>
-                  <p className="font-bold text-cyan-500 mb-1 flex items-center gap-1">
+                  <p className={`font-bold ${currentTheme.isLight ? 'text-indigo-700' : 'text-cyan-500'} mb-1 flex items-center gap-1`}>
                     <span>💡</span> Contoh pertanyaan pemantik:
                   </p>
                   <p>• "Apa yang kamu lihat ketika pelaku menyebarkan karya korban?"</p>
@@ -1695,7 +1733,7 @@ export default function InvestigasiPage() {
             {pesan.map((p, idx) => (
               <div key={idx} className={`flex gap-3 ${p.role === "user" ? "justify-end" : "justify-start"}`}>
                 {p.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border border-blue-400/50 flex items-center justify-center shrink-0 text-base shadow-md shadow-blue-500/20">
+                  <div className={`w-8 h-8 rounded-full ${currentTheme.isLight ? 'bg-indigo-100 border-indigo-200 text-indigo-700' : 'bg-gradient-to-br from-blue-500 to-indigo-600 border-blue-400/50 text-white'} border flex items-center justify-center shrink-0 text-base shadow-sm`}>
                     🤖
                   </div>
                 )}
@@ -1774,28 +1812,28 @@ export default function InvestigasiPage() {
             <button 
               type="button"
               onClick={() => sectionBuktiRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+              className={`px-2.5 py-1 rounded-lg ${currentTheme.isLight ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border-emerald-500/20'} border text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer`}
             >
               <span>🔍</span> Bukti (Pencatat)
             </button>
             <button 
               type="button"
               onClick={() => sectionAnalisisRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 border border-purple-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+              className={`px-2.5 py-1 rounded-lg ${currentTheme.isLight ? 'bg-purple-50 hover:bg-purple-100 text-purple-800 border-purple-200' : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 border-purple-500/20'} border text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer`}
             >
               <span>⚖️</span> Analisis UU (Analis)
             </button>
             <button 
               type="button"
               onClick={() => sectionSolusiRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+              className={`px-2.5 py-1 rounded-lg ${currentTheme.isLight ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20'} border text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer`}
             >
               <span>💡</span> Solusi & Mitigasi
             </button>
             <button 
               type="button"
               onClick={() => sectionRefleksiRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+              className={`px-2.5 py-1 rounded-lg ${currentTheme.isLight ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-200' : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border-rose-500/20'} border text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer`}
             >
               <span>💭</span> Refleksi
             </button>
@@ -1873,23 +1911,17 @@ export default function InvestigasiPage() {
             </div>
 
             {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (Ideal untuk HP Pencatat Bukti 1 & 2) */}
-            <div ref={sectionBuktiRef} className={`border border-emerald-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg ${
-              currentTheme.isLight 
-                ? "bg-white/95 shadow-sm" 
-                : currentTheme.id === "arcade"
-                ? "bg-[#180a30]/90"
-                : "bg-gradient-to-b from-emerald-950/20 via-slate-900/90 to-slate-900/90"
-            }`}>
+            <div ref={sectionBuktiRef} className={`border ${currentTheme.isLight ? 'border-slate-200 bg-white' : currentTheme.id === 'arcade' ? 'border-emerald-500/30 bg-[#180a30]/90' : 'border-emerald-500/30 bg-gradient-to-b from-emerald-950/20 via-slate-900/90 to-slate-900/90'} rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-sm`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-emerald-700' : 'text-emerald-300'}`}>
+                  <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-emerald-800' : 'text-emerald-300'}`}>
                     <span>🔍</span> BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG)
                   </h3>
                   <p className={`text-[11px] ${currentTheme.cardSubtext} mt-0.5`}>
                     Instruksi: Tuliskan petunjuk kunci yang didapatkan dari Saksi AI.
                   </p>
                 </div>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-500 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-bold shrink-0">
+                <span className={`text-[10px] ${currentTheme.isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40'} border px-2.5 py-0.5 rounded-full font-bold shrink-0`}>
                   HP Pencatat Bukti
                 </span>
               </div>
@@ -1943,23 +1975,17 @@ export default function InvestigasiPage() {
             </div>
 
             {/* BAGIAN III: LEMBAR ANALISIS HAKI (Ideal untuk HP Analis HAKI 1 & 2) */}
-            <div ref={sectionAnalisisRef} className={`border border-purple-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg ${
-              currentTheme.isLight 
-                ? "bg-white/95 shadow-sm" 
-                : currentTheme.id === "arcade"
-                ? "bg-[#180a30]/90"
-                : "bg-gradient-to-b from-purple-950/20 via-slate-900/90 to-slate-900/90"
-            }`}>
+            <div ref={sectionAnalisisRef} className={`border ${currentTheme.isLight ? 'border-slate-200 bg-white' : currentTheme.id === 'arcade' ? 'border-purple-500/30 bg-[#180a30]/90' : 'border-purple-500/30 bg-gradient-to-b from-purple-950/20 via-slate-900/90 to-slate-900/90'} rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-sm`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-purple-700' : 'text-purple-300'}`}>
+                  <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-purple-800' : 'text-purple-300'}`}>
                     <span>⚖️</span> BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4)
                   </h3>
                   <p className={`text-[11px] ${currentTheme.cardSubtext} mt-0.5`}>
                     Jawablah pertanyaan analisis pasal dan jenis pelanggaran etika/hukum berdasarkan bukti.
                   </p>
                 </div>
-                <span className="text-[10px] bg-purple-500/20 text-purple-500 border border-purple-500/40 px-2.5 py-0.5 rounded-full font-bold shrink-0">
+                <span className={`text-[10px] ${currentTheme.isLight ? 'bg-purple-50 text-purple-800 border-purple-200' : 'bg-purple-500/20 text-purple-500 border-purple-500/40'} border px-2.5 py-0.5 rounded-full font-bold shrink-0`}>
                   HP Analis HAKI
                 </span>
               </div>
@@ -1997,7 +2023,7 @@ export default function InvestigasiPage() {
                         }}
                         className={`text-[10px] border px-2.5 py-1 rounded-xl transition-all cursor-pointer font-medium hover:scale-105 active:scale-95 ${
                           currentTheme.isLight
-                            ? "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                            ? "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300"
                             : "bg-slate-800/90 hover:bg-purple-900/50 text-purple-300 border-purple-500/30"
                         }`}
                       >
@@ -2034,15 +2060,9 @@ export default function InvestigasiPage() {
             </div>
 
             {/* BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI (HOTS - C5) */}
-            <div ref={sectionSolusiRef} className={`border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg ${
-              currentTheme.isLight 
-                ? "bg-white/95 shadow-sm" 
-                : currentTheme.id === "arcade"
-                ? "bg-[#180a30]/90"
-                : "bg-gradient-to-b from-amber-950/20 via-slate-900/90 to-slate-900/90"
-            }`}>
+            <div ref={sectionSolusiRef} className={`border ${currentTheme.isLight ? 'border-slate-200 bg-white' : currentTheme.id === 'arcade' ? 'border-amber-500/30 bg-[#180a30]/90' : 'border-amber-500/30 bg-gradient-to-b from-amber-950/20 via-slate-900/90 to-slate-900/90'} rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-sm`}>
               <div>
-                <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-amber-700' : 'text-amber-300'}`}>
+                <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-amber-800' : 'text-amber-300'}`}>
                   <span>🛡️</span> BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI KASUS (HOTS - C5)
                 </h3>
                 <p className={`text-[11px] ${currentTheme.cardSubtext} mt-0.5`}>
@@ -2084,14 +2104,8 @@ export default function InvestigasiPage() {
             </div>
 
             {/* BAGIAN V: JURNAL REFLEKSI DIRI */}
-            <div ref={sectionRefleksiRef} className={`border border-rose-500/30 rounded-2xl p-4 sm:p-5 space-y-3 scroll-mt-14 shadow-lg ${
-              currentTheme.isLight 
-                ? "bg-white/95 shadow-sm" 
-                : currentTheme.id === "arcade"
-                ? "bg-[#180a30]/90"
-                : "bg-gradient-to-b from-rose-950/20 via-slate-900/90 to-slate-900/90"
-            }`}>
-              <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-rose-700' : 'text-rose-300'}`}>
+            <div ref={sectionRefleksiRef} className={`border ${currentTheme.isLight ? 'border-slate-200 bg-white' : currentTheme.id === 'arcade' ? 'border-rose-500/30 bg-[#180a30]/90' : 'border-rose-500/30 bg-gradient-to-b from-rose-950/20 via-slate-900/90 to-slate-900/90'} rounded-2xl p-4 sm:p-5 space-y-3 scroll-mt-14 shadow-sm`}>
+              <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-rose-800' : 'text-rose-300'}`}>
                 <span>💭</span> BAGIAN V: JURNAL REFLEKSI DIRI
               </h3>
               <div>
@@ -2130,26 +2144,34 @@ export default function InvestigasiPage() {
       </div>
 
       {/* FIXED BOTTOM NAVIGATION BAR KHUSUS SMARTPHONE - Sangat Nyaman & Selalu Terjangkau */}
-      <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 ${currentTheme.mobileNavBg} backdrop-blur-xl border-t ${currentTheme.mobileNavBorder} px-3 py-2 flex items-center justify-around shadow-2xl`}>
+      <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 ${currentTheme.mobileNavBg} backdrop-blur-xl border-t ${currentTheme.mobileNavBorder} px-3 py-2 flex items-center justify-around shadow-lg`}>
         <button
           type="button"
           onClick={() => setActiveTabMobile("chat")}
           className={`flex-1 py-2 px-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTabMobile === "chat"
-              ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/30 font-black"
+              ? currentTheme.isLight
+                ? "bg-indigo-600 text-white shadow-sm font-bold"
+                : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/30 font-black"
+              : currentTheme.isLight
+              ? "text-slate-600 hover:text-slate-900 font-semibold"
               : "text-slate-400 hover:text-white font-semibold"
           }`}
         >
           <span className="text-base">💬</span>
           <span>Tanya Saksi AI</span>
         </button>
-        <div className="w-px h-5 bg-slate-700 mx-1"></div>
+        <div className={`w-px h-5 ${currentTheme.isLight ? 'bg-slate-300' : 'bg-slate-700'} mx-1`}></div>
         <button
           type="button"
           onClick={() => setActiveTabMobile("lembar")}
           className={`flex-1 py-2 px-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
             activeTabMobile === "lembar"
-              ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/30 font-black"
+              ? currentTheme.isLight
+                ? "bg-emerald-600 text-white shadow-sm font-bold"
+                : "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/30 font-black"
+              : currentTheme.isLight
+              ? "text-slate-600 hover:text-slate-900 font-semibold"
               : "text-slate-400 hover:text-white font-semibold"
           }`}
         >

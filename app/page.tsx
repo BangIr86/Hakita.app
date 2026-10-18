@@ -29,10 +29,14 @@ export default function Home() {
   return (
     <main className={`min-h-screen ${currentTheme.pageBg} ${currentTheme.textColor} flex flex-col items-center justify-between p-4 sm:p-6 md:p-10 relative overflow-hidden transition-colors duration-300`}>
       
-      {/* Background Ambient Glowing Orbs */}
-      <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 sm:w-[500px] sm:h-[500px] ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none animate-pulse`}></div>
-      <div className={`absolute -bottom-20 -right-20 w-80 h-80 ${currentTheme.orb2} rounded-full blur-3xl pointer-events-none`}></div>
-      <div className={`absolute -top-20 -left-20 w-80 h-80 ${currentTheme.orb3} rounded-full blur-3xl pointer-events-none`}></div>
+      {/* Background Ambient Glowing Orbs (Hanya aktif di Mode Gelap/Arcade untuk cegah silau di Mode Ramah Mata) */}
+      {!currentTheme.isLight && (
+        <>
+          <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 sm:w-[500px] sm:h-[500px] ${currentTheme.orb1} rounded-full blur-3xl pointer-events-none animate-pulse`}></div>
+          <div className={`absolute -bottom-20 -right-20 w-80 h-80 ${currentTheme.orb2} rounded-full blur-3xl pointer-events-none`}></div>
+          <div className={`absolute -top-20 -left-20 w-80 h-80 ${currentTheme.orb3} rounded-full blur-3xl pointer-events-none`}></div>
+        </>
+      )}
 
       {/* Top Bar / Branding */}
       <header className="w-full max-w-6xl flex items-center justify-between z-10 py-2 gap-2">
@@ -42,7 +46,7 @@ export default function Home() {
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
           </div>
           <div>
-            <span className={`font-black text-sm sm:text-base tracking-wider ${currentTheme.cardTitle}`}>
+            <span className={`font-black text-sm sm:text-base tracking-wider ${currentTheme.isLight ? 'text-slate-900' : currentTheme.cardTitle}`}>
               DETEKTIF HAKI
             </span>
             <span className={`hidden sm:block text-[10px] ${currentTheme.cardSubtext} font-medium`}>
@@ -59,7 +63,7 @@ export default function Home() {
             href="/admin"
             className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ${
               currentTheme.isLight 
-                ? "bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 shadow-sm"
+                ? "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 shadow-sm"
                 : "bg-slate-800/80 hover:bg-slate-700 text-amber-300 border border-amber-500/30"
             }`}
           >
@@ -73,14 +77,14 @@ export default function Home() {
       <div className="max-w-4xl text-center space-y-6 sm:space-y-8 my-auto z-10 py-8">
         
         {/* Animated Badge */}
-        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-[11px] sm:text-xs font-black tracking-widest shadow-inner ${
+        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-[11px] sm:text-xs font-black tracking-widest ${
           currentTheme.isLight
-            ? "bg-blue-100/80 border-blue-300 text-blue-800"
+            ? "bg-slate-100 border-slate-300 text-slate-800"
             : currentTheme.id === "arcade"
-            ? "bg-fuchsia-950/60 border-fuchsia-500/40 text-pink-300"
-            : "bg-blue-500/10 border-blue-500/30 text-blue-300"
+            ? "bg-fuchsia-950/60 border-fuchsia-500/40 text-pink-300 shadow-inner"
+            : "bg-blue-500/10 border-blue-500/30 text-blue-300 shadow-inner"
         }`}>
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           MISI PEMBELAJARAN INOVATIF & INTERAKTIF
         </div>
 
@@ -88,7 +92,7 @@ export default function Home() {
         <div className="space-y-2">
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight leading-tight">
             AKADEMI <br className="sm:hidden" />
-            <span className={`drop-shadow-sm ${currentTheme.cardTitle}`}>
+            <span className={`drop-shadow-sm ${currentTheme.isLight ? 'text-indigo-950' : currentTheme.cardTitle}`}>
               DETEKTIF HAKI
             </span>
           </h1>
@@ -105,14 +109,14 @@ export default function Home() {
           >
             <span className="text-xl">🔍</span>
             <span>Mulai Misi Investigasi</span>
-            <span className="text-sm bg-white/20 px-2 py-0.5 rounded-lg ml-1 font-mono">Siswa</span>
+            <span className={`text-sm ${currentTheme.isLight ? 'bg-white/30 text-white' : 'bg-white/20'} px-2 py-0.5 rounded-lg ml-1 font-mono`}>Siswa</span>
           </Link>
 
           <Link
             href="/admin"
             className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-sm sm:text-base border transition-all shadow-md active:scale-95 cursor-pointer ${
               currentTheme.isLight
-                ? "bg-white hover:bg-slate-50 text-slate-800 border-indigo-200"
+                ? "bg-white hover:bg-slate-100 text-slate-800 border-slate-300 shadow-sm"
                 : "bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-white border-slate-700 hover:border-slate-500"
             }`}
           >
@@ -125,13 +129,13 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-6 text-left">
           
           {/* Card 1 */}
-          <div className={`${currentTheme.cardBg} backdrop-blur-md p-4 sm:p-5 rounded-2xl border ${currentTheme.cardBorder} hover:border-blue-400 transition-all shadow-lg hover:-translate-y-0.5 group`}>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform">
+          <div className={`${currentTheme.cardBg} backdrop-blur-md p-4 sm:p-5 rounded-2xl border ${currentTheme.cardBorder} hover:border-indigo-400 transition-all shadow-sm hover:-translate-y-0.5 group`}>
+            <div className={`w-10 h-10 rounded-xl ${currentTheme.isLight ? 'bg-indigo-50 border-indigo-200' : 'bg-blue-500/10 border-blue-500/20'} border flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform`}>
               🤖
             </div>
             <h3 className={`font-bold text-sm ${currentTheme.isLight ? 'text-slate-900' : 'text-white'} mb-1 flex items-center gap-1.5`}>
               <span>Saksi Mata Digital AI</span>
-              <span className="text-[10px] bg-blue-500/20 text-blue-500 px-1.5 py-0.2 rounded font-mono font-bold">Laptop</span>
+              <span className={`text-[10px] ${currentTheme.isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-500/20 text-blue-500'} px-1.5 py-0.2 rounded font-mono font-bold`}>Laptop</span>
             </h3>
             <p className={`text-xs ${currentTheme.cardSubtext} leading-relaxed`}>
               Interogasi saksi kunci dengan kecerdasan buatan untuk mengumpulkan alibi dan petunjuk pelanggaran.
@@ -139,13 +143,13 @@ export default function Home() {
           </div>
 
           {/* Card 2 */}
-          <div className={`${currentTheme.cardBg} backdrop-blur-md p-4 sm:p-5 rounded-2xl border ${currentTheme.cardBorder} hover:border-emerald-400 transition-all shadow-lg hover:-translate-y-0.5 group`}>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform">
+          <div className={`${currentTheme.cardBg} backdrop-blur-md p-4 sm:p-5 rounded-2xl border ${currentTheme.cardBorder} hover:border-emerald-400 transition-all shadow-sm hover:-translate-y-0.5 group`}>
+            <div className={`w-10 h-10 rounded-xl ${currentTheme.isLight ? 'bg-emerald-50 border-emerald-200' : 'bg-emerald-500/10 border-emerald-500/20'} border flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform`}>
               📱
             </div>
             <h3 className={`font-bold text-sm ${currentTheme.isLight ? 'text-slate-900' : 'text-white'} mb-1 flex items-center gap-1.5`}>
               <span>Multi-Device Sync</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-600 px-1.5 py-0.2 rounded font-mono font-bold">HP Tim</span>
+              <span className={`text-[10px] ${currentTheme.isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/20 text-emerald-600'} px-1.5 py-0.2 rounded font-mono font-bold`}>HP Tim</span>
             </h3>
             <p className={`text-xs ${currentTheme.cardSubtext} leading-relaxed`}>
               1 Laptop interogasi, 1 HP catat bukti, dan 1 HP telaah pasal UU dalam satu room tanpa saling menimpa.
@@ -153,13 +157,13 @@ export default function Home() {
           </div>
 
           {/* Card 3 */}
-          <div className={`${currentTheme.cardBg} backdrop-blur-md p-4 sm:p-5 rounded-2xl border ${currentTheme.cardBorder} hover:border-purple-400 transition-all shadow-lg hover:-translate-y-0.5 group`}>
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform">
+          <div className={`${currentTheme.cardBg} backdrop-blur-md p-4 sm:p-5 rounded-2xl border ${currentTheme.cardBorder} hover:border-purple-400 transition-all shadow-sm hover:-translate-y-0.5 group`}>
+            <div className={`w-10 h-10 rounded-xl ${currentTheme.isLight ? 'bg-purple-50 border-purple-200' : 'bg-purple-500/10 border-purple-500/20'} border flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform`}>
               ⚖️
             </div>
             <h3 className={`font-bold text-sm ${currentTheme.isLight ? 'text-slate-900' : 'text-white'} mb-1 flex items-center gap-1.5`}>
               <span>HOTS C4 & C5 + AI</span>
-              <span className="text-[10px] bg-purple-500/20 text-purple-600 px-1.5 py-0.2 rounded font-mono font-bold">LKPD</span>
+              <span className={`text-[10px] ${currentTheme.isLight ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-600'} px-1.5 py-0.2 rounded font-mono font-bold`}>LKPD</span>
             </h3>
             <p className={`text-xs ${currentTheme.cardSubtext} leading-relaxed`}>
               Kritisi hukum UU 28/2014, rancang solusi mitigasi adil, serta evaluasi rubrik otomatis berstandar PPG.

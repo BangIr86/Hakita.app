@@ -19,7 +19,7 @@ export default function ThemeSwitcher({
     <div 
       className={`inline-flex items-center gap-1 p-1 rounded-2xl border transition-all ${
         currentTheme === "ceria"
-          ? "bg-white/90 border-indigo-200 shadow-sm"
+          ? "bg-slate-100 border-slate-300 shadow-sm"
           : currentTheme === "arcade"
           ? "bg-[#17092e]/90 border-fuchsia-500/30 shadow-md shadow-fuchsia-950/40"
           : "bg-slate-900/80 border-slate-700/80 shadow-md"
@@ -27,7 +27,7 @@ export default function ThemeSwitcher({
       role="group"
       aria-label="Pilih Mode Tema"
     >
-      <span className="text-[10px] font-bold px-1.5 hidden md:inline text-slate-400">
+      <span className={`text-[10px] font-bold px-1.5 hidden md:inline ${currentTheme === "ceria" ? "text-slate-600" : "text-slate-400"}`}>
         Tema:
       </span>
       {themeList.map((t) => {
@@ -45,10 +45,10 @@ export default function ThemeSwitcher({
                 ? t === "cyber"
                   ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30 scale-105"
                   : t === "ceria"
-                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 scale-105"
+                  ? "bg-indigo-600 text-white shadow-sm scale-105"
                   : "bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-md shadow-fuchsia-600/40 scale-105"
                 : currentTheme === "ceria"
-                ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                ? "text-slate-700 hover:text-slate-900 hover:bg-slate-200"
                 : currentTheme === "arcade"
                 ? "text-purple-300 hover:text-pink-200 hover:bg-purple-950/60"
                 : "text-slate-400 hover:text-white hover:bg-slate-800"
@@ -57,7 +57,7 @@ export default function ThemeSwitcher({
             <span className="text-xs">{item.icon}</span>
             {!compact && (
               <span className="hidden xs:inline">
-                {t === "cyber" ? "Cyber" : t === "ceria" ? "Ceria" : "Arcade"}
+                {t === "cyber" ? "Cyber" : t === "ceria" ? "Ramah Mata" : "Arcade"}
               </span>
             )}
           </button>
