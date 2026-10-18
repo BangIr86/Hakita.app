@@ -39,6 +39,8 @@ const parseNamaAnggotaString = (raw: string) => {
   return result;
 };
 
+const STORAGE_KEY_SESSION = "hakita_investigasi_session";
+
 export default function InvestigasiPage() {
   // Sesi Kelas
   const [kodeKelasInput, setKodeKelasInput] = useState("");
@@ -277,6 +279,16 @@ export default function InvestigasiPage() {
         setSisaDetik(matchedDurasi * 60);
         setErrorKelas("");
 
+        // Simpan sesi kelas ke localStorage agar tidak hilang saat di-refresh (F5)
+        try {
+          localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify({
+            kodeKelas: cleanKode,
+            namaKelas: matchedKelas,
+            durasiMenit: matchedDurasi,
+            kelompok: null
+          }));
+        } catch {}
+
         // Cek room kelompok mana saja yang sudah aktif untuk kelas ini
         if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
           const { data: existingReports } = await supabase
@@ -384,9 +396,25 @@ export default function InvestigasiPage() {
   };
 
   // MULTI-DEVICE: Pemilihan Kelompok & Pengecekan Room Aktif Otomatis
-  const handlePilihKelompok = async (num: number) => {
+  const handlePilihKelompok = async (num: number, overrideKelas?: string, overrideKode?: string) => {
     setIsJoiningRoom(true);
     setKelompokAktif(num);
+
+    const targetKelas = overrideKelas || namaKelas;
+    const targetKode = overrideKode || kodeKelasAktif;
+
+    // Simpan status kelompok ke local session agar siswa tidak perlu input ulang saat refresh
+    try {
+      const sess = localStorage.getItem(STORAGE_KEY_SESSION);
+      const parsed = sess ? JSON.parse(sess) : {};
+      localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify({
+        ...parsed,
+        kodeKelas: targetKode || parsed.kodeKelas,
+        namaKelas: targetKelas || parsed.namaKelas,
+        durasiMenit: durasiMenit || parsed.durasiMenit || 30,
+        kelompok: num
+      }));
+    } catch {}
 
     const kasusAssigned = daftarKasus.find(k => k.kelompok.includes(num)) || daftarKasus[0];
     setKasusAktif(kasusAssigned);
@@ -402,7 +430,7 @@ export default function InvestigasiPage() {
         .from("lkpd_reports")
         .select("*")
         .eq("kelompok", num)
-        .eq("kelas", namaKelas)
+        .eq("kelas", targetKelas)
         .maybeSingle();
 
       let sudahAdaIdentitas = false;
@@ -446,7 +474,7 @@ export default function InvestigasiPage() {
 
             if (parsed.timer_start) {
               timerStartRef.current = parsed.timer_start;
-              const timerStorageKey = `hakita_timer_${kodeKelasAktif}_kelompok_${num}`;
+              const timerStorageKey = `hakita_timer_${targetKode}_kelompok_${num}`;
               localStorage.setItem(timerStorageKey, parsed.timer_start.toString());
             }
 
@@ -491,7 +519,7 @@ export default function InvestigasiPage() {
         .from("chat_history")
         .select("role, content")
         .eq("kelompok", num)
-        .eq("kelas", namaKelas)
+        .eq("kelas", targetKelas)
         .order("created_at", { ascending: true });
 
       if (chatData && chatData.length > 0) {
@@ -505,6 +533,45 @@ export default function InvestigasiPage() {
       setIsJoiningRoom(false);
     }
   };
+
+  // Auto-restore sesi kelas & kelompok jika halaman di-refresh (F5) oleh siswa
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_SESSION);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.kodeKelas && parsed.namaKelas) {
+          setKodeKelasAktif(parsed.kodeKelas);
+          setNamaKelas(parsed.namaKelas);
+          setKodeKelasInput(parsed.kodeKelas);
+          if (parsed.durasiMenit) {
+            setDurasiMenit(parsed.durasiMenit);
+            setSisaDetik(parsed.durasiMenit * 60);
+          }
+
+          // Cek room kelompok mana saja yang sudah aktif untuk kelas ini
+          if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
+            supabase
+              .from("lkpd_reports")
+              .select("kelompok")
+              .eq("kelas", parsed.namaKelas)
+              .then(({ data }) => {
+                if (data && data.length > 0) {
+                  setActiveGroups(data.map(r => r.kelompok));
+                }
+              });
+          }
+
+          // Jika kelompok sebelumnya sudah dipilih, otomatis masuk kembali ke kelompok tsb
+          if (parsed.kelompok && typeof parsed.kelompok === "number") {
+            handlePilihKelompok(parsed.kelompok, parsed.namaKelas, parsed.kodeKelas);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memulihkan sesi investigasi:", err);
+    }
+  }, []);
 
   // MULTI-DEVICE: Inisialisasi Room saat Perangkat Pertama Mendaftarkan Anggota
   const handleMulaiInvestigasi = async (e: React.FormEvent) => {
@@ -1088,6 +1155,11 @@ export default function InvestigasiPage() {
             setNamaKelas("");
             setKodeKelasInput("");
             setActiveGroups([]);
+            setKelompokAktif(null);
+            setIsIdentitasLengkap(false);
+            try {
+              localStorage.removeItem(STORAGE_KEY_SESSION);
+            } catch {}
           }}
           className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
         >
@@ -1153,7 +1225,17 @@ export default function InvestigasiPage() {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
         <button 
-          onClick={() => setKelompokAktif(null)}
+          onClick={() => {
+            setKelompokAktif(null);
+            try {
+              const sess = localStorage.getItem(STORAGE_KEY_SESSION);
+              if (sess) {
+                const parsed = JSON.parse(sess);
+                parsed.kelompok = null;
+                localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(parsed));
+              }
+            } catch {}
+          }}
           className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
         >
           <span>←</span> Kembali Pilih Kelompok
@@ -1345,6 +1427,14 @@ export default function InvestigasiPage() {
             onClick={() => {
               setKelompokAktif(null);
               setIsIdentitasLengkap(false);
+              try {
+                const sess = localStorage.getItem(STORAGE_KEY_SESSION);
+                if (sess) {
+                  const parsed = JSON.parse(sess);
+                  parsed.kelompok = null;
+                  localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(parsed));
+                }
+              } catch {}
             }}
             className="text-xs text-slate-400 hover:text-white px-1.5 py-1 cursor-pointer"
             title="Ganti Kelompok"
