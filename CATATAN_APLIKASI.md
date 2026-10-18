@@ -292,14 +292,36 @@ hakita-app/
     * `[⚖️ Analisis UU (Analis)]`
     * `[💡 Solusi & Mitigasi]`
     * `[💭 Refleksi]`
-  * Memungkinkan siswa di smartphone langsung melompat ke bagian tugasnya tanpa harus terus-menerus melakukan scroll panjang.
+### ✅ Tahap 5: Mode Proyektor / Slide Presentasi Kelas (Laptop Guru) [SELESAI]
+* **Skenario Riil Presentasi Kelas**:
+  * Laptop guru tersambung ke kabel HDMI / wireless display proyektor LCD atau Smart TV kelas.
+  * Ketika giliran kelompok maju ke depan kelas, guru tidak perlu meminta siswa membuka flashdisk atau login slide Canva/PowerPoint terpisah.
+  * Guru cukup mengklik tombol **"📽️ Tayangkan ke Proyektor"** (di panel kelompok terpilih) atau tombol **"📽️ Proyektor"** (di sidebar) pada Dasbor Guru (`/admin/dashboard`).
+* **Fitur & Arsitektur Mode Proyektor**:
+  * **5 Slide Presentasi Interaktif Otomatis**:
+    1. **Slide 1: Identitas Tim & Skenario Kasus**:
+       * Menampilkan judul kasus besar, ringkasan skenario masalah (*Problem Context*), dan kartu 6 peran anggota dengan badge sorotan khusus pada peran **"6. Juru Bicara (Presenter Utama 🎤)"**.
+    2. **Slide 2: Catatan Bukti Investigasi (Evidence Log)**:
+       * Menampilkan 3 kartu petunjuk kunci (Jejak pelaku, aset yang dirugikan, status lisensi/hak cipta) serta tombol opsional untuk membuka bukti transkrip chat asli interogator dengan Saksi AI.
+    3. **Slide 3: Lembar Analisis HAKI (HOTS - C4)**:
+       * Menguraikan tindakan konkret pelanggaran hukum, jenis HAKI/lisensi yang dilanggar (Hak Cipta, Hak Moral, Hak Ekonomi, CC), dan pihak yang dirugikan beserta kerugian moral/ekonomi.
+    4. **Slide 4: Rekomendasi Solusi & Mitigasi (HOTS - C5)**:
+       * Menyajikan 2 pilar penyelesaian: Langkah adil bagi korban saat ini (takedown, ganti rugi, maaf terbuka) dan Aturan etis masa depan.
+    5. **Slide 5: Jurnal Refleksi Tim & Pengesahan Asesor AI**:
+       * Menampilkan catatan refleksi autentik siswa mengenai nilai menghargai karya cipta, skor & ulasan kepatuhan UU No. 28/2014 dari Asesor AI, serta banner ajakan tanya jawab untuk kelompok penanggap.
+  * **Kelompok Switcher Cepat Tanpa Menutup Modal**:
+    * Guru dapat langsung berpindah dari Kelompok 1 ke Kelompok 2, 3, dst., hanya dengan 1 kali klik pada tab tim di atas layar presentasi.
+  * **Dukungan Wireless Presenter / Pointer & Keyboard Navigation**:
+    * Tombol keyboard: `[Spasi]` atau `[Panah Kanan]` atau `[PageDown]` untuk slide berikutnya; `[Panah Kiri]` atau `[PageUp]` untuk slide sebelumnya; `[Esc]` untuk keluar.
+  * **Mode Layar Penuh (Fullscreen)**:
+    * Tombol bawaan untuk beralih ke Fullscreen (`⛶ Layar Penuh`) guna menyembunyikan taskbar dan tab browser guru saat ditayangkan ke siswa.
 
 ---
 
 ## 10. KESIMPULAN FITUR UNGGULAN APLIKASI
 Hakita App telah mengintegrasikan siklus Problem-Based Learning (PBL) dan kolaborasi digital secara utuh:
 1. **Siswa**: Menjalankan investigasi interaktif dengan Saksi AI dalam ruangan kolaboratif multi-perangkat (*Multi-Device Room*), mengisi lembar LKPD digital 5 bagian secara terdistribusi (1 laptop interogasi, 1 HP catat bukti, 1 HP analisis pasal), dengan sinkronisasi waktu dan data tanpa konflik.
-2. **Guru**: Memantau aktivitas interogasi real-time, melihat pengerjaan asli siswa berdampingan dengan evaluasi AI berbasis UU Hak Cipta No. 28/2014 & rubrik HOTS, mengatur batas waktu per sesi kelas, mencetak berkas resmi PPG ber-kop, dan mengekspor rekap spreadsheet Excel.
+2. **Guru**: Memantau aktivitas interogasi real-time, menayangkan presentasi hasil karya siswa ke proyektor kelas dengan 1 klik (*Mode Proyektor 5 Slide*), melihat pengerjaan asli siswa berdampingan dengan evaluasi AI berbasis UU Hak Cipta No. 28/2014 & rubrik HOTS, mengatur batas waktu per sesi kelas, mencetak berkas resmi PPG ber-kop, dan mengekspor rekap spreadsheet Excel.
 
 
 

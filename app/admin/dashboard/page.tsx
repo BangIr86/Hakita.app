@@ -83,6 +83,7 @@ const parseSolusi = (raw: string) => {
       aturan: parsed.aturan || "",
       refleksi: parsed.refleksi || "",
       nama_anggota: parsed.nama_anggota || "",
+      anggota_detail: parsed.anggota_detail || null,
       evaluasi_ai: (parsed.evaluasi_ai || null) as EvaluasiAI | null
     };
   } catch {
@@ -91,9 +92,43 @@ const parseSolusi = (raw: string) => {
       aturan: "",
       refleksi: "",
       nama_anggota: "",
+      anggota_detail: null,
       evaluasi_ai: null
     };
   }
+};
+
+// Helper untuk mengekstrak peranan anggota tim
+const parseNamaAnggotaString = (raw: string) => {
+  const result = {
+    interregator: "",
+    pencatat1: "",
+    pencatat2: "",
+    analis1: "",
+    analis2: "",
+    jurubicara: ""
+  };
+  if (!raw) return result;
+
+  const parts = raw.split(/,\s*(?=\d+\.)/);
+  parts.forEach(part => {
+    const clean = part.trim();
+    if (clean.includes("(Interregator")) {
+      result.interregator = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Interregator.*/, "").trim();
+    } else if (clean.includes("(Pencatat Bukti 1)")) {
+      result.pencatat1 = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Pencatat Bukti 1.*/, "").trim();
+    } else if (clean.includes("(Pencatat Bukti 2)")) {
+      result.pencatat2 = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Pencatat Bukti 2.*/, "").trim();
+    } else if (clean.includes("(Analis HAKI 1)")) {
+      result.analis1 = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Analis HAKI 1.*/, "").trim();
+    } else if (clean.includes("(Analis HAKI 2)")) {
+      result.analis2 = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Analis HAKI 2.*/, "").trim();
+    } else if (clean.includes("(Juru Bicara")) {
+      result.jurubicara = clean.replace(/^\d+\.\s*/, "").replace(/\s*\(Juru Bicara.*/, "").trim();
+    }
+  });
+
+  return result;
 };
 
 export default function AdminDashboard() {
@@ -119,6 +154,44 @@ export default function AdminDashboard() {
   const [inputDurasiMenit, setInputDurasiMenit] = useState<number>(30);
   const [isSavingKelas, setIsSavingKelas] = useState(false);
   const [pesanSuksesKelas, setPesanSuksesKelas] = useState("");
+
+  // State Tahap 5: Mode Presentasi Proyektor (Laptop Guru)
+  const [showPresentationModal, setShowPresentationModal] = useState(false);
+  const [presentationKelompok, setPresentationKelompok] = useState<number>(1);
+  const [currentSlide, setCurrentSlide] = useState<number>(1);
+  const [showChatInPresentation, setShowChatInPresentation] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Keyboard Navigation untuk Mode Presentasi (Arrow Left/Right, Space, Escape, PageUp/Down)
+  useEffect(() => {
+    if (!showPresentationModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+        e.preventDefault();
+        setCurrentSlide((prev) => Math.min(5, prev + 1));
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault();
+        setCurrentSlide((prev) => Math.max(1, prev - 1));
+      } else if (e.key === "Escape") {
+        setShowPresentationModal(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showPresentationModal]);
+
+  // Fullscreen Handler
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+      }
+    }
+  };
 
   const fetchData = async () => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda")) {
@@ -569,6 +642,17 @@ export default function AdminDashboard() {
                 <span>Filter Sesi Kelas:</span>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => {
+                      setPresentationKelompok(selectedKelompok || allKelompokKeys[0] || 1);
+                      setCurrentSlide(1);
+                      setShowPresentationModal(true);
+                    }}
+                    className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
+                    title="Buka Mode Layar Penuh Proyektor untuk Presentasi Kelas"
+                  >
+                    <span>📽️</span> Proyektor
+                  </button>
+                  <button
                     onClick={() => exportToCsv(allKelompokKeys)}
                     className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
                     title="Ekspor seluruh rekap LKPD kelas ini ke file Excel (CSV)"
@@ -793,8 +877,20 @@ export default function AdminDashboard() {
                         )}
                       </div>
 
-                      {/* Tombol Aksi: Cetak PDF & Ekspor Excel */}
+                      {/* Tombol Aksi: Cetak PDF, Ekspor Excel, & Tayangkan ke Proyektor */}
                       <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => {
+                            setPresentationKelompok(selectedKelompok);
+                            setCurrentSlide(1);
+                            setShowChatInPresentation(false);
+                            setShowPresentationModal(true);
+                          }}
+                          className="text-xs bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          title="Tayangkan ke Layar Proyektor / Smart TV Kelas untuk Presentasi Siswa di Depan Kelas"
+                        >
+                          <span>📽️</span> Tayangkan ke Proyektor
+                        </button>
                         <button
                           onClick={handlePrint}
                           className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
@@ -1519,6 +1615,583 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* TAHAP 5: MODAL PRESENTASI PROYEKTOR / SMART TV KELAS */}
+      {showPresentationModal && (() => {
+        const presGroupData = getGroupMetadata(presentationKelompok);
+        const presBukti = parseBukti(presGroupData.bukti_petunjuk);
+        const presAnalisis = parseAnalisis(presGroupData.analisis_pelanggaran);
+        const presSolusi = parseSolusi(presGroupData.solusi_rekomendasi);
+        const presKasus = DAFTAR_KASUS.find(d => d.id === presGroupData.kasus_id) || DAFTAR_KASUS[0];
+        const presEval = presSolusi.evaluasi_ai;
+
+        let presAnggotaDetail = parseNamaAnggotaString(presGroupData.nama_anggota);
+        if (presSolusi.anggota_detail) {
+          presAnggotaDetail = { ...presAnggotaDetail, ...presSolusi.anggota_detail };
+        }
+
+        const totalSlides = 5;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col text-slate-100 overflow-hidden select-none animate-in fade-in duration-200">
+            {/* Top Bar Presentasi Proyektor */}
+            <div className="h-16 bg-slate-900 border-b border-slate-800 px-4 md:px-6 flex items-center justify-between shrink-0 gap-3">
+              {/* Info Kelas & Logo */}
+              <div className="flex items-center gap-3 shrink-0">
+                <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-sm md:text-base text-white tracking-wide">
+                      DETEKTIF HAKI
+                    </span>
+                    <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black rounded-full uppercase tracking-wider">
+                      📽️ Mode Proyektor Kelas
+                    </span>
+                    <span className="text-xs bg-blue-600/30 text-blue-300 px-2.5 py-0.5 rounded-full border border-blue-500/30 font-mono font-bold">
+                      Kelas {presGroupData.kelas}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Kelompok Switcher Cepat untuk Guru */}
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 shrink-0">
+                <span className="text-[11px] font-bold text-slate-400 px-2 hidden lg:inline">Pilih Tim Maju:</span>
+                {[1, 2, 3, 4, 5, 6].map((num) => {
+                  const hasData = allKelompokKeys.includes(num);
+                  const isPresSelected = presentationKelompok === num;
+                  return (
+                    <button
+                      key={num}
+                      onClick={() => {
+                        setPresentationKelompok(num);
+                        setCurrentSlide(1);
+                        setShowChatInPresentation(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isPresSelected
+                          ? "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-lg font-black ring-2 ring-amber-400"
+                          : hasData
+                          ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
+                          : "bg-slate-900/60 hover:bg-slate-800 text-slate-500 border border-slate-800/80"
+                      }`}
+                      title={hasData ? `Kelompok ${num} (Sudah Ada Data)` : `Kelompok ${num} (Belum Ada Data)`}
+                    >
+                      <span>Kel {num}</span>
+                      {hasData && !isPresSelected && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Tombol Fullscreen & Tutup */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={toggleFullscreen}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Aktifkan Layar Penuh (F11)"
+                >
+                  <span>{isFullscreen ? "🗗" : "⛶"}</span>
+                  <span className="hidden sm:inline">{isFullscreen ? "Perkecil" : "Layar Penuh"}</span>
+                </button>
+                <button
+                  onClick={() => setShowPresentationModal(false)}
+                  className="px-3.5 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white rounded-xl text-xs font-bold border border-rose-500/30 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                  title="Tutup Mode Presentasi (Esc)"
+                >
+                  <span>✕</span>
+                  <span className="hidden sm:inline">Tutup (Esc)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Slide Navigation Tabs Bar */}
+            <div className="bg-slate-900/80 border-b border-slate-800 px-4 md:px-6 py-2 flex items-center justify-between overflow-x-auto [scrollbar-width:none] shrink-0 gap-2">
+              <div className="flex items-center gap-2">
+                {[
+                  { num: 1, label: "1. Tim & Kasus", icon: "👥" },
+                  { num: 2, label: "2. Bukti Kunci (AI)", icon: "🔍" },
+                  { num: 3, label: "3. Analisis HAKI (C4)", icon: "⚖️" },
+                  { num: 4, label: "4. Solusi & Mitigasi (C5)", icon: "🛡️" },
+                  { num: 5, label: "5. Refleksi & Evaluasi", icon: "🌟" }
+                ].map((s) => (
+                  <button
+                    key={s.num}
+                    onClick={() => {
+                      setCurrentSlide(s.num);
+                      setShowChatInPresentation(false);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      currentSlide === s.num
+                        ? "bg-blue-600 text-white shadow-md ring-1 ring-blue-400"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    <span>{s.icon}</span>
+                    <span>{s.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-xs font-bold text-slate-400 hidden md:flex items-center gap-2 shrink-0">
+                <span>Tim Presenter:</span>
+                <span className="text-amber-400 font-extrabold bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-lg">
+                  Kelompok {presentationKelompok}
+                </span>
+              </div>
+            </div>
+
+            {/* Body Slide Presentasi */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col justify-between max-w-6xl mx-auto w-full [scrollbar-width:thin]">
+              
+              {/* SLIDE 1: IDENTITAS TIM DETEKTIF & KASUS */}
+              {currentSlide === 1 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 my-auto">
+                  <div className="text-center space-y-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full uppercase tracking-wider">
+                      <span>Kasus #{presKasus.id} • Diteliti oleh Kelompok {presentationKelompok}</span>
+                    </div>
+                    <h2 className="text-2xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 tracking-tight">
+                      "{presKasus.judul}"
+                    </h2>
+                  </div>
+
+                  {/* Ringkasan Kasus */}
+                  <div className="bg-slate-900/90 border-l-4 border-blue-500 border-y border-r border-slate-800 p-5 rounded-2xl shadow-xl">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-1 flex items-center gap-1.5">
+                      <span>📁</span> Ringkasan Skenario Masalah (Problem Context):
+                    </h3>
+                    <p className="text-sm md:text-base text-slate-200 leading-relaxed font-normal">
+                      {presKasus.deskripsi}
+                    </p>
+                  </div>
+
+                  {/* Grid 6 Anggota & Peran Detektif */}
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+                      <span>🕵️‍♂️</span> Susunan Tim Detektif & Pembagian Peran (5–6 Anggota):
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {/* Peran 1 */}
+                      <div className="bg-slate-900/90 border border-blue-500/30 p-3.5 rounded-2xl">
+                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block mb-1">
+                          1. Interregator Chat AI 💬
+                        </span>
+                        <p className="text-sm font-extrabold text-white truncate">
+                          {presAnggotaDetail.interregator || "(Belum Diisi)"}
+                        </p>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">Tanya jawab dengan Saksi AI</span>
+                      </div>
+
+                      {/* Peran 2 */}
+                      <div className="bg-slate-900/90 border border-emerald-500/30 p-3.5 rounded-2xl">
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                          2. Pencatat Bukti 1 📝
+                        </span>
+                        <p className="text-sm font-extrabold text-white truncate">
+                          {presAnggotaDetail.pencatat1 || "(Belum Diisi)"}
+                        </p>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">Mencatat petunjuk pelaku</span>
+                      </div>
+
+                      {/* Peran 3 */}
+                      <div className="bg-slate-900/90 border border-teal-500/30 p-3.5 rounded-2xl">
+                        <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider block mb-1">
+                          3. Pencatat Bukti 2 📋
+                        </span>
+                        <p className="text-sm font-extrabold text-white truncate">
+                          {presAnggotaDetail.pencatat2 || "(Belum Diisi)"}
+                        </p>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">Mencatat petunjuk aset & lisensi</span>
+                      </div>
+
+                      {/* Peran 4 */}
+                      <div className="bg-slate-900/90 border border-purple-500/30 p-3.5 rounded-2xl">
+                        <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block mb-1">
+                          4. Analis HAKI 1 ⚖️
+                        </span>
+                        <p className="text-sm font-extrabold text-white truncate">
+                          {presAnggotaDetail.analis1 || "(Belum Diisi)"}
+                        </p>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">Menganalisis jenis pelanggaran</span>
+                      </div>
+
+                      {/* Peran 5 */}
+                      <div className="bg-slate-900/90 border border-indigo-500/30 p-3.5 rounded-2xl">
+                        <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block mb-1">
+                          5. Analis HAKI 2 🔍
+                        </span>
+                        <p className="text-sm font-extrabold text-white truncate">
+                          {presAnggotaDetail.analis2 || "(Belum Diisi)"}
+                        </p>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">Menganalisis pihak dirugikan</span>
+                      </div>
+
+                      {/* Peran 6 (Juru Bicara - Highlighted) */}
+                      <div className="bg-gradient-to-br from-amber-950/60 to-slate-900 border-2 border-amber-500/70 p-3.5 rounded-2xl shadow-lg ring-1 ring-amber-400/40 relative">
+                        <span className="absolute top-2 right-2 px-1.5 py-0.5 bg-amber-500 text-slate-950 text-[9px] font-black rounded-md uppercase">
+                          🎤 Presenter
+                        </span>
+                        <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block mb-1">
+                          6. Juru Bicara Presentasi 🎤
+                        </span>
+                        <p className="text-sm font-black text-amber-100 truncate">
+                          {presAnggotaDetail.jurubicara || "(Opsional / 5 Anak)"}
+                        </p>
+                        <span className="text-[10px] text-amber-400/80 block mt-0.5 font-semibold">Memimpin presentasi kelas</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SLIDE 2: BUKTI INVESTIGASI (EVIDENCE LOG) */}
+              {currentSlide === 2 && (
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 my-auto">
+                  <div className="text-center space-y-1">
+                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                      Bagian II: Catatan Bukti Investigasi
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-black text-white">
+                      Petunjuk Kunci dari "Saksi Mata Digital" (AI)
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Clue 1 */}
+                    <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-5 shadow-xl flex flex-col">
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800">
+                        <span className="text-xl">🔍</span>
+                        <div>
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Petunjuk #1</span>
+                          <h4 className="text-xs font-bold text-white">Pelaku & Tindakan</h4>
+                        </div>
+                      </div>
+                      <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium whitespace-pre-wrap flex-1 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                        {presBukti.p1 || "(Belum ada catatan petunjuk pelaku)"}
+                      </p>
+                    </div>
+
+                    {/* Clue 2 */}
+                    <div className="bg-slate-900 border border-teal-500/40 rounded-2xl p-5 shadow-xl flex flex-col">
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800">
+                        <span className="text-xl">📦</span>
+                        <div>
+                          <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider block">Petunjuk #2</span>
+                          <h4 className="text-xs font-bold text-white">Aset / Karya Dirugikan</h4>
+                        </div>
+                      </div>
+                      <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium whitespace-pre-wrap flex-1 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                        {presBukti.p2 || "(Belum ada catatan aset karya)"}
+                      </p>
+                    </div>
+
+                    {/* Clue 3 */}
+                    <div className="bg-slate-900 border border-blue-500/40 rounded-2xl p-5 shadow-xl flex flex-col">
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800">
+                        <span className="text-xl">📜</span>
+                        <div>
+                          <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">Petunjuk #3</span>
+                          <h4 className="text-xs font-bold text-white">Lisensi & Status Hukum</h4>
+                        </div>
+                      </div>
+                      <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium whitespace-pre-wrap flex-1 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                        {presBukti.p3 || "(Belum ada catatan status hukum)"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Toggle Buka Transkrip Chat Asli */}
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setShowChatInPresentation(!showChatInPresentation)}
+                      className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-blue-400 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                    >
+                      <span>💬</span>
+                      <span>{showChatInPresentation ? "Sembunyikan Transkrip Chat AI" : `Lihat Bukti Dialog Interogasi dengan Saksi AI (${presGroupData.messages.length} Pesan)`}</span>
+                    </button>
+
+                    {showChatInPresentation && (
+                      <div className="mt-3 p-4 bg-slate-950 border border-slate-800 rounded-2xl max-h-56 overflow-y-auto space-y-2 [scrollbar-width:thin]">
+                        {presGroupData.messages.length === 0 ? (
+                          <p className="text-xs text-slate-500 italic text-center py-2">Belum ada riwayat pesan chat tercatat.</p>
+                        ) : (
+                          presGroupData.messages.map((m, idx) => (
+                            <div key={idx} className={`p-2.5 rounded-xl text-xs ${
+                              m.role === "user" 
+                                ? "bg-blue-600/30 border border-blue-500/30 text-blue-200 ml-6" 
+                                : "bg-slate-900 border border-slate-800 text-slate-300 mr-6"
+                            }`}>
+                              <span className="font-bold text-[10px] block mb-0.5 text-slate-400">
+                                {m.role === "user" ? "🕵️ Detektif (Interregator):" : "🤖 Saksi Mata Digital (AI):"}
+                              </span>
+                              {m.content}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* SLIDE 3: ANALISIS HAKI (HOTS - C4) */}
+              {currentSlide === 3 && (
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 my-auto">
+                  <div className="text-center space-y-1">
+                    <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">
+                      Bagian III: Lembar Analisis HAKI (HOTS - C4)
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-black text-white">
+                      Analisis Pelanggaran Hukum & UU Hak Cipta No. 28/2014
+                    </h2>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Analisis 1: Tindakan */}
+                    <div className="bg-slate-900 border border-purple-500/30 rounded-2xl p-5 shadow-xl">
+                      <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-800">
+                        <span className="text-lg">❌</span>
+                        <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                          1. Tindakan Konkret Pelaku yang Melanggar Hukum / Etika Digital:
+                        </h4>
+                      </div>
+                      <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 whitespace-pre-wrap">
+                        {presAnalisis.tindakan || "(Belum ada uraian tindakan spesifik)"}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Analisis 2: Jenis HAKI */}
+                      <div className="bg-slate-900 border border-indigo-500/30 rounded-2xl p-5 shadow-xl">
+                        <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-800">
+                          <span className="text-lg">⚖️</span>
+                          <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
+                            2. Jenis HAKI & Lisensi yang Dilanggar:
+                          </h4>
+                        </div>
+                        <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 whitespace-pre-wrap">
+                          {presAnalisis.jenis || "(Belum ada catatan jenis HAKI / lisensi)"}
+                        </p>
+                      </div>
+
+                      {/* Analisis 3: Pihak Dirugikan */}
+                      <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-5 shadow-xl">
+                        <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-800">
+                          <span className="text-lg">📉</span>
+                          <h4 className="text-xs font-bold text-rose-300 uppercase tracking-wider">
+                            3. Pihak yang Paling Dirugikan & Kerugian:
+                          </h4>
+                        </div>
+                        <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 whitespace-pre-wrap">
+                          {presAnalisis.kerugian || "(Belum ada uraian kerugian moral / ekonomi)"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SLIDE 4: SOLUSI & MITIGASI (HOTS - C5) */}
+              {currentSlide === 4 && (
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 my-auto">
+                  <div className="text-center space-y-1">
+                    <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                      Bagian IV: Rekomendasi Solusi & Mitigasi (HOTS - C5)
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-black text-white">
+                      Rekomendasi Pemecahan Masalah Secara Adil & Etis
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Solusi 1: Adil untuk Korban */}
+                    <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 shadow-2xl flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-2.5 mb-3 pb-2 border-b border-slate-800">
+                          <span className="text-2xl">⚖️</span>
+                          <div>
+                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Pilar Penyelesaian 1</span>
+                            <h4 className="text-sm font-extrabold text-white">Langkah Adil untuk Korban Saat Ini</h4>
+                          </div>
+                        </div>
+                        <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium bg-slate-950/70 p-4 rounded-2xl border border-slate-800 whitespace-pre-wrap">
+                          {presSolusi.solusi || "(Belum ada rekomendasi langkah penyelesaian korban)"}
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-amber-400/80 font-bold mt-3 block">
+                        Fokus: Pemulihan hak moral, royalti/ganti rugi, dan permohonan maaf.
+                      </span>
+                    </div>
+
+                    {/* Solusi 2: Aturan Etis Masa Depan */}
+                    <div className="bg-slate-900 border-2 border-teal-500/40 rounded-3xl p-6 shadow-2xl flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-2.5 mb-3 pb-2 border-b border-slate-800">
+                          <span className="text-2xl">🛡️</span>
+                          <div>
+                            <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider block">Pilar Penyelesaian 2</span>
+                            <h4 className="text-sm font-extrabold text-white">Aturan Etis Digital di Masa Depan</h4>
+                          </div>
+                        </div>
+                        <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium bg-slate-950/70 p-4 rounded-2xl border border-slate-800 whitespace-pre-wrap">
+                          {presSolusi.aturan || "(Belum ada rumusan aturan etis masa depan)"}
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-teal-400/80 font-bold mt-3 block">
+                        Fokus: Edukasi lisensi legal, atribusi sumber karya, dan integritas digital.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SLIDE 5: REFLEKSI DIRI & ASESOR AI */}
+              {currentSlide === 5 && (
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 my-auto">
+                  <div className="text-center space-y-1">
+                    <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">
+                      Bagian V: Jurnal Refleksi & Validasi Penutup
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-black text-white">
+                      Refleksi Pembelajaran & Pengesahan Hasil Investigasi
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Refleksi Siswa */}
+                    <div className="bg-slate-900 border border-rose-500/40 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-800">
+                          <span className="text-2xl">💭</span>
+                          <div>
+                            <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">Jurnal Refleksi Tim</span>
+                            <h4 className="text-sm font-bold text-white">Pelajaran Berharga tentang Hak Cipta</h4>
+                          </div>
+                        </div>
+                        <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium bg-slate-950/70 p-4 rounded-2xl border border-slate-800 italic whitespace-pre-wrap">
+                          "{presSolusi.refleksi || "(Belum ada refleksi yang dicatat kelompok)"}"
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-3 block">
+                        Refleksi autentik siswa mengenai pentingnya menghargai karya cipta orang lain di era digital.
+                      </span>
+                    </div>
+
+                    {/* Evaluasi AI / Pengesahan Guru */}
+                    <div className="bg-slate-900 border border-indigo-500/40 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">🤖</span>
+                            <div>
+                              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">Validasi Asesor AI</span>
+                              <h4 className="text-sm font-bold text-white">Penilaian UU No. 28/2014 & HOTS</h4>
+                            </div>
+                          </div>
+                          {presEval && (
+                            <span className="px-3 py-1 bg-indigo-600 text-white font-black text-xs rounded-full shadow">
+                              {presEval.skorTotal}/100 ({presEval.predikat})
+                            </span>
+                          )}
+                        </div>
+
+                        {presEval ? (
+                          <div className="space-y-2.5 text-xs bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block">Ulasan Hukum:</span>
+                              <p className="text-slate-200 text-xs leading-relaxed mt-0.5">{presEval.analisisHukum}</p>
+                            </div>
+                            <div className="border-t border-slate-800 pt-2">
+                              <span className="text-[10px] font-bold text-amber-400 uppercase block">Saran Penguatan Guru:</span>
+                              <p className="text-slate-300 italic text-xs leading-relaxed mt-0.5">{presEval.rekomendasiGuru}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 px-4 bg-slate-950/60 rounded-2xl border border-dashed border-slate-800">
+                            <span className="text-3xl block mb-2 opacity-40">⏳</span>
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                              Evaluasi AI belum dijalankan untuk kelompok ini. Guru dapat mengklik tombol <em>"Jalankan Evaluasi AI"</em> di Dasbor Guru setelah presentasi usai.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <span className="text-[10px] text-slate-500 mt-3 block">
+                        Memastikan objektivitas penilaian saintifik sesuai pedoman PPG.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Banner Penutup & Ajakan Tanya Jawab */}
+                  <div className="bg-gradient-to-r from-blue-950/70 via-slate-900 to-indigo-950/70 border border-blue-500/40 rounded-2xl p-4 text-center shadow-lg">
+                    <p className="text-sm md:text-base font-extrabold text-white">
+                      👏 Sekian paparan hasil investigasi dari <span className="text-amber-400 font-black">Kelompok {presentationKelompok}</span>!
+                    </p>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Silakan bagi rekan-rekan tim detektif lain atau Bapak/Ibu Guru jika ada tanggapan, sanggahan, atau pertanyaan. 🎤
+                    </p>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Bottom Navigation Controls Bar */}
+            <div className="h-16 bg-slate-900 border-t border-slate-800 px-4 md:px-8 flex items-center justify-between shrink-0 gap-4">
+              {/* Tombol Slide Sebelumnya */}
+              <button
+                disabled={currentSlide <= 1}
+                onClick={() => {
+                  setCurrentSlide((prev) => Math.max(1, prev - 1));
+                  setShowChatInPresentation(false);
+                }}
+                className="px-4 md:px-5 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-slate-800 text-white rounded-xl text-xs md:text-sm font-bold border border-slate-700 transition-all flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow"
+              >
+                <span>←</span>
+                <span className="hidden sm:inline">Slide Sebelumnya</span>
+              </button>
+
+              {/* Indikator Slide & Hotkey Hint */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => {
+                        setCurrentSlide(s);
+                        setShowChatInPresentation(false);
+                      }}
+                      className={`h-2.5 rounded-full transition-all cursor-pointer ${
+                        currentSlide === s ? "w-8 bg-amber-400" : "w-2.5 bg-slate-700 hover:bg-slate-500"
+                      }`}
+                      title={`Ke Slide ${s}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-[11px] text-slate-400 mt-1 font-mono hidden sm:inline">
+                  Slide {currentSlide} dari {totalSlides} • Tekan [Spasi] atau [Panah Kanan] untuk lanjut
+                </span>
+              </div>
+
+              {/* Tombol Slide Selanjutnya */}
+              <button
+                disabled={currentSlide >= totalSlides}
+                onClick={() => {
+                  setCurrentSlide((prev) => Math.min(totalSlides, prev + 1));
+                  setShowChatInPresentation(false);
+                }}
+                className="px-4 md:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-30 disabled:hover:bg-blue-600 text-white rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-md"
+              >
+                <span className="hidden sm:inline">Slide Selanjutnya</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
       </div>
 
       {/* DOKUMEN RESMI UNTUK CETAK PDF (Hanya Tampil Saat Print / PDF) */}
