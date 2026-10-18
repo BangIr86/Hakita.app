@@ -628,16 +628,18 @@ export default function AdminDashboard() {
         <div className="w-full md:w-80 lg:w-96 bg-white border-r border-slate-200 flex flex-col shrink-0 max-h-[42vh] md:max-h-none md:h-full overflow-hidden">
           
           {/* Header Dasbor Guru */}
-          <div className="p-4 border-b border-slate-200 bg-slate-900 text-white shrink-0">
+          <div className="p-4 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white shrink-0">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
-                <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-                <h1 className="text-base font-bold">Dasbor Guru</h1>
+                <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain drop-shadow" />
+                <h1 className="text-base font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-200">
+                  Dasbor Guru
+                </h1>
               </div>
               <div className="flex items-center gap-1.5">
                 <button 
                   onClick={fetchData} 
-                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-1 font-medium cursor-pointer"
+                  className="text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl border border-slate-700 transition-all flex items-center gap-1 font-bold cursor-pointer"
                   title="Refresh Data"
                 >
                   <span>🔄</span> Refresh
@@ -656,7 +658,7 @@ export default function AdminDashboard() {
                       setCurrentSlide(1);
                       setShowPresentationModal(true);
                     }}
-                    className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
+                    className="text-amber-300 hover:text-amber-200 font-bold flex items-center gap-1 cursor-pointer bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-lg hover:bg-amber-500/25 transition-all shadow-sm"
                     title="Buka Mode Layar Penuh Proyektor untuk Presentasi Kelas"
                   >
                     <span>📽️</span> Proyektor

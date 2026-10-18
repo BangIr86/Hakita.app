@@ -1086,23 +1086,33 @@ export default function InvestigasiPage() {
   // TAHAP 1: INPUT KODE KELAS
   if (!kodeKelasAktif) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-center p-4 sm:p-6 text-white relative overflow-hidden">
+        {/* Background Ambient Orbs */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-10 -right-10 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
         <button 
           onClick={() => window.location.href = '/'}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
+          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs sm:text-sm font-bold z-10"
         >
           <span>←</span> Kembali ke Beranda
         </button>
 
-        <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700 max-w-md w-full text-center">
-          <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-lg" />
+        <div className="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-700/80 max-w-md w-full text-center relative z-10">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 relative">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-xl" />
+            <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-cyan-400 animate-ping"></span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">
+          
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-blue-500/15 to-cyan-500/15 border border-blue-500/30 text-cyan-300 text-[11px] font-bold rounded-full mb-3">
+            <span>🕵️‍♂️</span> Portal Investigasi Siswa
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400 mb-2">
             DETEKTIF HAKI
           </h1>
-          <p className="text-slate-400 text-xs md:text-sm mb-6">
-            Masukkan Kode Akses Kelas yang dibagikan oleh Guru Anda untuk memulai investigasi kolaboratif.
+          <p className="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed">
+            Masukkan Kode Akses Kelas yang dibagikan oleh Guru Anda untuk membuka ruang investigasi digital kelompok.
           </p>
 
           <form onSubmit={handleVerifikasiKelas} className="space-y-4 text-left">
@@ -1119,10 +1129,10 @@ export default function InvestigasiPage() {
                   if (errorKelas) setErrorKelas("");
                 }}
                 placeholder="Contoh: HAKI-9A"
-                className={`w-full bg-slate-900 border rounded-2xl px-4 py-3.5 text-white font-mono uppercase tracking-widest text-center text-lg focus:outline-none transition-all ${
+                className={`w-full bg-slate-950/80 border rounded-2xl px-4 py-3.5 text-white font-mono uppercase tracking-widest text-center text-lg font-bold focus:outline-none transition-all ${
                   errorKelas 
                     ? "border-red-500 bg-red-950/20 focus:ring-2 focus:ring-red-500" 
-                    : "border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                    : "border-slate-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
                 }`}
               />
               {errorKelas && (
@@ -1135,7 +1145,7 @@ export default function InvestigasiPage() {
             <button
               type="submit"
               disabled={isValidatingKelas || !kodeKelasInput.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg hover:-translate-y-0.5 text-sm flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:via-indigo-500 hover:to-cyan-400 disabled:opacity-50 text-white font-black py-3.5 px-4 rounded-2xl transition-all shadow-lg shadow-blue-600/30 hover:shadow-cyan-500/30 active:scale-95 text-sm flex items-center justify-center gap-2 cursor-pointer"
             >
               {isValidatingKelas ? "Memverifikasi..." : "Lanjut ke Pemilihan Kelompok →"}
             </button>
@@ -1148,7 +1158,11 @@ export default function InvestigasiPage() {
   // TAHAP 2: PEMILIHAN KELOMPOK (DENGAN INDIKATOR MULTI-DEVICE ROOM AKTIF)
   if (!kelompokAktif) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-center p-4 sm:p-6 text-white relative overflow-hidden">
+        {/* Background Ambient Orbs */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
         <button 
           onClick={() => {
             setKodeKelasAktif(null);
@@ -1161,28 +1175,28 @@ export default function InvestigasiPage() {
               localStorage.removeItem(STORAGE_KEY_SESSION);
             } catch {}
           }}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
+          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs sm:text-sm font-bold z-10"
         >
           <span>←</span> Ganti Kelas
         </button>
 
-        <div className="text-center mb-8 mt-12 md:mt-0">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
+        <div className="text-center mb-8 mt-14 md:mt-0 z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-emerald-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold rounded-full mb-3 uppercase tracking-wider shadow-inner">
             <span>Sesi Kelas: {namaKelas} ({kodeKelasAktif})</span>
             <span>•</span>
             <span className="text-amber-400 font-extrabold flex items-center gap-1">
               <span>⏱️</span> {durasiMenit} Menit
             </span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+          <h1 className="text-3xl md:text-5xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400">
             Identifikasi Tim Detektif
           </h1>
-          <p className="text-slate-400 text-sm md:text-base max-w-md mx-auto">
+          <p className="text-slate-400 text-xs sm:text-sm md:text-base max-w-md mx-auto leading-relaxed">
             Pilih nomor kelompok Anda. Jika rekan tim sudah membuka room di laptop/HP, Anda akan otomatis bergabung ke room yang sama!
           </p>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-3xl w-full">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 max-w-3xl w-full z-10">
           {[1, 2, 3, 4, 5, 6].map((num) => {
             const isRoomActive = activeGroups.includes(num);
             return (
@@ -1190,18 +1204,24 @@ export default function InvestigasiPage() {
                 key={num}
                 onClick={() => handlePilihKelompok(num)}
                 disabled={isJoiningRoom}
-                className="relative py-7 px-5 bg-slate-800 border-2 border-slate-700 rounded-3xl shadow-lg hover:border-blue-500 hover:bg-slate-800/80 hover:-translate-y-2 transition-all duration-300 text-xl font-bold text-slate-200 flex flex-col items-center gap-2 disabled:opacity-50 group cursor-pointer"
+                className={`relative py-6 sm:py-7 px-4 sm:px-5 rounded-3xl shadow-xl transition-all duration-300 flex flex-col items-center gap-2 group cursor-pointer border ${
+                  isRoomActive
+                    ? "bg-gradient-to-b from-slate-900/90 to-emerald-950/40 border-emerald-500/50 hover:border-emerald-400 shadow-emerald-500/10 hover:shadow-emerald-500/25 ring-1 ring-emerald-500/30"
+                    : "bg-slate-900/80 backdrop-blur-md border-slate-800 hover:border-cyan-400 hover:bg-slate-850 shadow-slate-950/50 hover:shadow-cyan-500/20"
+                } hover:-translate-y-2 active:scale-95 disabled:opacity-50`}
               >
                 {isRoomActive && (
-                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
+                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     Room Aktif
                   </span>
                 )}
-                <span className="text-4xl drop-shadow-md group-hover:scale-110 transition-transform">🕵️‍♂️</span>
+                <span className="text-4xl drop-shadow-md group-hover:scale-110 transition-transform">
+                  {num === 1 ? "🕵️‍♂️" : num === 2 ? "🎧" : num === 3 ? "💻" : num === 4 ? "🎨" : num === 5 ? "📸" : "📱"}
+                </span>
                 <span className="text-lg md:text-xl font-black text-white">Kelompok {num}</span>
-                <span className="text-[11px] font-normal text-slate-400">
-                  {isRoomActive ? "Rekan tim sudah di dalam → Gabung" : "Klik untuk membuka room"}
+                <span className="text-[11px] font-medium text-slate-400 text-center">
+                  {isRoomActive ? "Rekan tim di dalam → Gabung" : "Klik untuk buka room"}
                 </span>
               </button>
             );
@@ -1209,10 +1229,10 @@ export default function InvestigasiPage() {
         </div>
 
         {isJoiningRoom && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-800 border border-slate-700 p-6 rounded-2xl flex items-center gap-3 shadow-xl">
-              <span className="w-4 h-4 rounded-full border-2 border-blue-400 border-t-transparent animate-spin"></span>
-              <span className="text-sm font-semibold text-white">Menghubungkan ke Room Kelompok...</span>
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl flex items-center gap-3 shadow-2xl">
+              <span className="w-5 h-5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></span>
+              <span className="text-sm font-bold text-white">Menghubungkan ke Room Kelompok...</span>
             </div>
           </div>
         )}
@@ -1223,7 +1243,10 @@ export default function InvestigasiPage() {
   // TAHAP 3: REGISTRASI TIM (BAGIAN I: IDENTITAS & PERAN ANGGOTA - JIKA BELUM DIDAFTARKAN DEVICE PERTAMA)
   if (kelompokAktif && !isIdentitasLengkap) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white relative">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-center p-4 sm:p-6 text-white relative overflow-hidden">
+        {/* Background Ambient Orbs */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
         <button 
           onClick={() => {
             setKelompokAktif(null);
@@ -1236,14 +1259,14 @@ export default function InvestigasiPage() {
               }
             } catch {}
           }}
-          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold"
+          className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs sm:text-sm font-bold z-10"
         >
           <span>←</span> Kembali Pilih Kelompok
         </button>
 
-        <div className="bg-slate-800 p-6 md:p-8 rounded-3xl shadow-xl border border-slate-700 max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-width:thin]">
+        <div className="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-700/80 max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-width:thin] relative z-10">
           <div className="text-center mb-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-2 uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-500/15 to-emerald-500/15 border border-blue-500/30 text-blue-300 text-xs font-bold rounded-full mb-2 uppercase tracking-wider">
               <span>Kelas {namaKelas} • Kelompok {kelompokAktif}</span>
               <span>•</span>
               <span className="text-amber-400 flex items-center gap-1 font-bold">
@@ -1251,12 +1274,12 @@ export default function InvestigasiPage() {
               </span>
             </div>
             <div className="text-4xl mb-1.5">👥</div>
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-1">BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
+            <h2 className="text-xl md:text-2xl font-black text-white mb-1">BAGIAN I: IDENTITAS TIM DETEKTIF</h2>
             <p className="text-slate-400 text-xs">Masukkan nama anggota tim sesuai peran detektif masing-masing.</p>
           </div>
 
           {/* Banner Tips Multi-Device */}
-          <div className="mb-4 p-3 bg-blue-950/40 border border-blue-500/30 rounded-2xl text-[11px] text-blue-300 flex items-start gap-2">
+          <div className="mb-4 p-3.5 bg-blue-950/50 border border-blue-500/30 rounded-2xl text-[11px] text-blue-200 flex items-start gap-2 shadow-inner">
             <span className="text-base shrink-0">💡</span>
             <span>
               <strong>Tips Multi-Device:</strong> Cukup 1 siswa di laptop mendaftarkan nama tim ini. Perangkat rekan tim lain (HP Pencatat & HP Analis) akan otomatis terhubung ke room ini!
@@ -1265,89 +1288,90 @@ export default function InvestigasiPage() {
           
           <form onSubmit={handleMulaiInvestigasi} className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-blue-300 mb-1">
-                1. Anggota 1 (Interregator Chat AI) <span className="text-red-400">*</span>
+              <label className="block text-xs font-bold text-blue-300 mb-1 flex items-center gap-1.5">
+                <span>💻</span> 1. Anggota 1 (Interregator Chat AI) <span className="text-red-400">*</span>
               </label>
               <input 
                 type="text"
                 required
                 value={anggotaInterregator}
                 onChange={(e) => setAnggotaInterregator(e.target.value)}
-                placeholder="Nama siswa yang bertugas chat interogasi dengan AI di laptop"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-blue-500"
+                placeholder="Nama siswa yang bertugas interogasi saksi AI di laptop"
+                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-emerald-300 mb-1">
-                2. Anggota 2 (Pencatat Bukti 1)
+              <label className="block text-xs font-bold text-emerald-300 mb-1 flex items-center gap-1.5">
+                <span>🔍</span> 2. Anggota 2 (Pencatat Bukti 1)
               </label>
               <input 
                 type="text"
                 value={anggotaPencatat1}
                 onChange={(e) => setAnggotaPencatat1(e.target.value)}
                 placeholder="Nama siswa pencatat petunjuk kunci 1 (di HP/Laptop)"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-teal-300 mb-1">
-                3. Anggota 3 (Pencatat Bukti 2)
+              <label className="block text-xs font-bold text-teal-300 mb-1 flex items-center gap-1.5">
+                <span>🔍</span> 3. Anggota 3 (Pencatat Bukti 2)
               </label>
               <input 
                 type="text"
                 value={anggotaPencatat2}
                 onChange={(e) => setAnggotaPencatat2(e.target.value)}
                 placeholder="Nama siswa pencatat petunjuk kunci 2"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-teal-500"
+                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-purple-300 mb-1">
-                4. Anggota 4 (Analis HAKI 1)
+              <label className="block text-xs font-bold text-purple-300 mb-1 flex items-center gap-1.5">
+                <span>⚖️</span> 4. Anggota 4 (Analis HAKI 1)
               </label>
               <input 
                 type="text"
                 value={anggotaAnalis1}
                 onChange={(e) => setAnggotaAnalis1(e.target.value)}
                 placeholder="Nama siswa analis pelanggaran hukum/etika 1 (di HP/Laptop)"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-purple-500"
+                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-indigo-300 mb-1">
-                5. Anggota 5 (Analis HAKI 2)
+              <label className="block text-xs font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                <span>⚖️</span> 5. Anggota 5 (Analis HAKI 2)
               </label>
               <input 
                 type="text"
                 value={anggotaAnalis2}
                 onChange={(e) => setAnggotaAnalis2(e.target.value)}
                 placeholder="Nama siswa analis pelanggaran hukum/etika 2"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-amber-300 mb-1">
-                6. Anggota 6 (Juru Bicara Presentasi / Opsional jika 5 anak)
+              <label className="block text-xs font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                <span>📢</span> 6. Anggota 6 (Juru Bicara Presentasi)
               </label>
               <input 
                 type="text"
                 value={anggotaJuruBicara}
                 onChange={(e) => setAnggotaJuruBicara(e.target.value)}
                 placeholder="Nama siswa juru bicara saat presentasi kelas"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3.5 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
               />
             </div>
 
             <button 
               type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg mt-3 text-sm flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:via-indigo-500 hover:to-cyan-400 text-white font-black py-3.5 px-4 rounded-2xl transition-all hover:-translate-y-0.5 shadow-xl shadow-blue-600/30 active:scale-95 mt-4 text-sm flex items-center justify-center gap-2 cursor-pointer"
             >
-              Mulai Investigasi & Buka Room Kolaborasi 🔍
+              <span>Mulai Investigasi & Buka Room Kolaborasi</span>
+              <span>🔍</span>
             </button>
           </form>
         </div>
@@ -1365,19 +1389,22 @@ export default function InvestigasiPage() {
         </div>
       )}
 
-      {/* Top Navbar Responsif */}
-      <header className="h-14 bg-slate-800 border-b border-slate-700 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2">
+      {/* Top Navbar Responsif & Energik */}
+      <header className="h-14 bg-slate-900/95 backdrop-blur-md border-b border-indigo-950/80 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2 shadow-md">
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <img src="/logo.png" alt="Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+          <div className="relative">
+            <img src="/logo.png" alt="Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain drop-shadow" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+          </div>
           <div>
-            <h1 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 sm:gap-2">
-              <span className="hidden sm:inline">BERKAS INVESTIGASI</span>
-              <span className="px-2 py-0.5 bg-blue-600/30 text-blue-400 text-[10px] rounded-full border border-blue-500/30 font-mono">
+            <h1 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5 sm:gap-2">
+              <span className="hidden sm:inline tracking-wider">BERKAS INVESTIGASI</span>
+              <span className="px-2 py-0.5 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 text-cyan-300 text-[10px] rounded-full border border-blue-500/40 font-mono font-bold">
                 {namaKelas} • Kel {kelompokAktif}
               </span>
               {/* Badge Multi-Device Room */}
               <span 
-                className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold rounded-full" 
+                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold rounded-full shadow-sm" 
                 title={isRealtimeConnected ? "Realtime WebSocket Terhubung: Kolaborasi Multi-Device Aktif" : "Kolaborasi Multi-Device Aktif (Auto-Sync Polling)"}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -1389,14 +1416,14 @@ export default function InvestigasiPage() {
 
         {/* Countdown Timer Badge Interaktif Terpusat */}
         <div 
-          className={`px-2 sm:px-3 py-1 rounded-xl border flex items-center gap-1.5 sm:gap-2 text-xs font-mono font-bold transition-all shadow-sm shrink-0 ${
+          className={`px-2.5 sm:px-3 py-1 rounded-xl border flex items-center gap-1.5 sm:gap-2 text-xs font-mono font-bold transition-all shadow-sm shrink-0 ${
             isSubmitted
-              ? "bg-emerald-950/80 border-emerald-500/50 text-emerald-300"
+              ? "bg-gradient-to-r from-emerald-950/90 to-teal-950/90 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10"
               : sisaDetik <= 0
-              ? "bg-rose-950 border-rose-500 text-rose-300 animate-pulse ring-1 ring-rose-500"
+              ? "bg-rose-950 border-rose-500 text-rose-300 animate-pulse ring-1 ring-rose-500 shadow-rose-500/20"
               : sisaDetik <= 300
-              ? "bg-amber-950/90 border-amber-500 text-amber-300 animate-pulse"
-              : "bg-slate-900 border-slate-700 text-slate-200"
+              ? "bg-gradient-to-r from-amber-950/90 to-orange-950/90 border-amber-500 text-amber-300 animate-pulse shadow-md shadow-amber-500/20"
+              : "bg-gradient-to-r from-slate-900 to-indigo-950 border-indigo-500/40 text-cyan-300"
           }`} 
           title={`Batas waktu investigasi kelas: ${durasiMenit} menit (Tersinkronisasi ke seluruh perangkat tim)`}
         >
@@ -1417,7 +1444,7 @@ export default function InvestigasiPage() {
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => setShowKasusModal(true)}
-            className="text-[11px] sm:text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded-lg border border-slate-600 flex items-center gap-1 font-semibold cursor-pointer"
+            className="text-[11px] sm:text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2.5 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1 font-bold cursor-pointer transition-all shadow-sm"
             title="Lihat Rincian Berkas Kasus"
           >
             <span>📁</span> <span className="hidden xs:inline">Kasus #{kasusAktif.id}</span>
@@ -1436,7 +1463,7 @@ export default function InvestigasiPage() {
                 }
               } catch {}
             }}
-            className="text-xs text-slate-400 hover:text-white px-1.5 py-1 cursor-pointer"
+            className="text-xs text-slate-400 hover:text-white px-2 py-1 cursor-pointer font-medium"
             title="Ganti Kelompok"
           >
             Keluar
@@ -1445,14 +1472,14 @@ export default function InvestigasiPage() {
       </header>
 
       {/* MOBILE SEGMENTED TAB SWITCHER - 100% Terlihat Jelas & Nyaman Diklik di Layar HP */}
-      <div className="lg:hidden bg-slate-900 border-b border-slate-800 p-2 shrink-0 z-20 flex gap-2 shadow-md">
+      <div className="lg:hidden bg-slate-900 border-b border-indigo-950/80 p-2 shrink-0 z-20 flex gap-2 shadow-md">
         <button
           type="button"
           onClick={() => setActiveTabMobile("chat")}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTabMobile === "chat"
-              ? "bg-blue-600 text-white shadow-lg ring-2 ring-blue-400"
-              : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+              ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25 ring-2 ring-cyan-400"
+              : "bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/80"
           }`}
         >
           <span className="text-sm">💬</span>
@@ -1464,8 +1491,8 @@ export default function InvestigasiPage() {
           onClick={() => setActiveTabMobile("lembar")}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
             activeTabMobile === "lembar"
-              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg ring-2 ring-emerald-400"
-              : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+              ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-400"
+              : "bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/80"
           }`}
         >
           <span className="text-sm">📝</span>
@@ -1494,15 +1521,15 @@ export default function InvestigasiPage() {
       <div className="flex-1 flex overflow-hidden">
         
         {/* PANEL KIRI: INTEROGASI AI (CHAT) - Ideal untuk Siswa Berperan Interregator di Laptop */}
-        <div className={`w-full lg:w-1/2 flex flex-col bg-slate-900 border-r border-slate-800 h-full ${
+        <div className={`w-full lg:w-1/2 flex flex-col bg-slate-950 border-r border-slate-850 h-full ${
           activeTabMobile === "chat" ? "flex" : "hidden lg:flex"
         }`}>
           {/* Chat Header Status */}
-          <div className="p-3 bg-slate-850 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <div className="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="font-semibold text-slate-300">Saksi Mata Digital (AI)</span>
-              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700 hidden sm:inline">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <span className="font-bold text-slate-200">Saksi Mata Digital (AI)</span>
+              <span className="text-[10px] bg-blue-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-blue-500/30 hidden sm:inline font-mono font-bold">
                 Laptop Interregator
               </span>
             </div>
@@ -1514,12 +1541,14 @@ export default function InvestigasiPage() {
             {pesan.length === 0 && (
               <div className="p-6 text-center text-slate-400 max-w-md mx-auto my-auto space-y-3">
                 <div className="text-4xl">🕵️‍♀️💬</div>
-                <h3 className="font-bold text-white text-base">Mulai Interogasi Saksi Mata Digital</h3>
+                <h3 className="font-black text-white text-base">Mulai Interogasi Saksi Mata Digital</h3>
                 <p className="text-xs leading-relaxed">
                   Saksi ini memegang petunjuk rahasia mengenai kasus <strong>"{kasusAktif.judul}"</strong>. Tanyakan siapa pelakunya, bukti apa yang ditemukan, atau lisensi apa yang dilanggar!
                 </p>
-                <div className="text-left text-xs bg-slate-800 p-3 rounded-xl border border-slate-700 space-y-1 text-slate-300">
-                  <p className="font-bold text-blue-400 mb-1">💡 Contoh pertanyaan pemantik:</p>
+                <div className="text-left text-xs bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-1.5 text-slate-300 shadow-inner">
+                  <p className="font-bold text-cyan-400 mb-1 flex items-center gap-1">
+                    <span>💡</span> Contoh pertanyaan pemantik:
+                  </p>
                   <p>• "Apa yang kamu lihat ketika pelaku menyebarkan karya korban?"</p>
                   <p>• "Apakah korban memiliki lisensi resmi atas karya tersebut?"</p>
                   <p>• "Mengapa tindakan pelaku dikategorikan melanggar hukum?"</p>
@@ -1530,14 +1559,14 @@ export default function InvestigasiPage() {
             {pesan.map((p, idx) => (
               <div key={idx} className={`flex gap-3 ${p.role === "user" ? "justify-end" : "justify-start"}`}>
                 {p.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center shrink-0 text-base">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border border-blue-400/50 flex items-center justify-center shrink-0 text-base shadow-md shadow-blue-500/20">
                     🤖
                   </div>
                 )}
                 <div className={`p-3.5 rounded-2xl max-w-[85%] text-xs md:text-sm leading-relaxed whitespace-pre-wrap ${
                   p.role === "user" 
-                    ? "bg-blue-600 text-white rounded-br-none shadow-md" 
-                    : "bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-none shadow"
+                    ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 text-white rounded-br-none shadow-md shadow-blue-600/20 font-medium" 
+                    : "bg-slate-900 text-slate-100 border border-slate-800 rounded-bl-none shadow-sm"
                 }`}>
                   {p.content}
                 </div>
@@ -1545,7 +1574,7 @@ export default function InvestigasiPage() {
             ))}
             {isLoading && (
               <div className="flex gap-2 items-center text-slate-400 text-xs italic pl-11">
-                <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
                 Saksi Mata Digital sedang mengetik petunjuk...
               </div>
             )}
@@ -1553,19 +1582,19 @@ export default function InvestigasiPage() {
           </div>
 
           {/* Form Chat Input */}
-          <form onSubmit={kirimPesan} className="p-3 bg-slate-800 border-t border-slate-700 flex gap-2 shrink-0 pb-16 lg:pb-3">
+          <form onSubmit={kirimPesan} className="p-3 bg-slate-900 border-t border-slate-800 flex gap-2 shrink-0 pb-16 lg:pb-3">
             <input
               type="text"
               value={inputUser}
               onChange={(e) => setInputUser(e.target.value)}
               placeholder="Ketik pertanyaan investigasi kepada saksi di sini..."
               disabled={isLoading}
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs md:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={isLoading || !inputUser.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-xs md:text-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
+              className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 disabled:opacity-50 text-white font-black px-4 py-2.5 rounded-xl transition-all text-xs md:text-sm shrink-0 flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20 active:scale-95"
             >
               <span>Tanya</span> 🔍
             </button>
@@ -1650,55 +1679,55 @@ export default function InvestigasiPage() {
             </div>
 
             {/* BAGIAN I: IDENTITAS TIM DETEKTIF */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="bg-slate-900/90 border border-blue-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-lg">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-xs text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="font-black text-xs text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
                   <span>🏷️</span> BAGIAN I: IDENTITAS TIM DETEKTIF
                 </h3>
-                <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
+                <span className="text-[10px] bg-blue-500/20 text-cyan-300 border border-blue-500/40 px-2.5 py-0.5 rounded-full font-bold">
                   5–6 Anak/Kelompok
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
                 <div>
-                  <span className="text-[10px] text-slate-400 block">Kelas:</span>
-                  <span className="font-bold text-white text-xs">{namaKelas}</span>
+                  <span className="text-[10px] text-slate-400 block font-medium">Kelas:</span>
+                  <span className="font-black text-white text-xs">{namaKelas}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block">Nomor Kelompok:</span>
-                  <span className="font-bold text-white text-xs">Kelompok {kelompokAktif}</span>
+                  <span className="text-[10px] text-slate-400 block font-medium">Nomor Kelompok:</span>
+                  <span className="font-black text-cyan-300 text-xs">Kelompok {kelompokAktif}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block">Kasus yang Diteliti:</span>
-                  <span className="font-bold text-blue-300 text-xs">Kasus #{kasusAktif.id} ({kasusAktif.judul})</span>
+                  <span className="text-[10px] text-slate-400 block font-medium">Kasus yang Diteliti:</span>
+                  <span className="font-bold text-amber-300 text-xs">Kasus #{kasusAktif.id} ({kasusAktif.judul})</span>
                 </div>
               </div>
 
               <div>
-                <span className="text-[11px] font-semibold text-slate-300 block mb-1.5">Nama Anggota & Peran:</span>
-                <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                  <p>1. <strong className="text-white">{anggotaInterregator || "(Belum diisi)"}</strong> <span className="text-blue-400 text-[11px] font-medium">(Interregator Chat AI)</span></p>
-                  <p>2. <strong className="text-white">{anggotaPencatat1 || "(Belum diisi)"}</strong> <span className="text-emerald-400 text-[11px] font-medium">(Pencatat Bukti 1)</span></p>
-                  <p>3. <strong className="text-white">{anggotaPencatat2 || "(Belum diisi)"}</strong> <span className="text-teal-400 text-[11px] font-medium">(Pencatat Bukti 2)</span></p>
-                  <p>4. <strong className="text-white">{anggotaAnalis1 || "(Belum diisi)"}</strong> <span className="text-purple-400 text-[11px] font-medium">(Analis HAKI 1)</span></p>
-                  <p>5. <strong className="text-white">{anggotaAnalis2 || "(Belum diisi)"}</strong> <span className="text-indigo-400 text-[11px] font-medium">(Analis HAKI 2)</span></p>
-                  <p>6. <strong className="text-white">{anggotaJuruBicara || "(Belum diisi / Opsional jika 5 anak)"}</strong> <span className="text-amber-400 text-[11px] font-medium">(Juru Bicara Presentasi)</span></p>
+                <span className="text-[11px] font-bold text-slate-300 block mb-1.5">Nama Anggota & Peran:</span>
+                <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                  <p>1. <strong className="text-white">{anggotaInterregator || "(Belum diisi)"}</strong> <span className="text-blue-400 text-[11px] font-semibold">(Interregator Chat AI)</span></p>
+                  <p>2. <strong className="text-white">{anggotaPencatat1 || "(Belum diisi)"}</strong> <span className="text-emerald-400 text-[11px] font-semibold">(Pencatat Bukti 1)</span></p>
+                  <p>3. <strong className="text-white">{anggotaPencatat2 || "(Belum diisi)"}</strong> <span className="text-teal-400 text-[11px] font-semibold">(Pencatat Bukti 2)</span></p>
+                  <p>4. <strong className="text-white">{anggotaAnalis1 || "(Belum diisi)"}</strong> <span className="text-purple-400 text-[11px] font-semibold">(Analis HAKI 1)</span></p>
+                  <p>5. <strong className="text-white">{anggotaAnalis2 || "(Belum diisi)"}</strong> <span className="text-indigo-400 text-[11px] font-semibold">(Analis HAKI 2)</span></p>
+                  <p>6. <strong className="text-white">{anggotaJuruBicara || "(Belum diisi / Opsional)"}</strong> <span className="text-amber-400 text-[11px] font-semibold">(Juru Bicara Presentasi)</span></p>
                 </div>
               </div>
             </div>
 
             {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (Ideal untuk HP Pencatat Bukti 1 & 2) */}
-            <div ref={sectionBuktiRef} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5 scroll-mt-14">
+            <div ref={sectionBuktiRef} className="bg-gradient-to-b from-emerald-950/20 via-slate-900/90 to-slate-900/90 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg shadow-emerald-500/5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-xs text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <h3 className="font-black text-xs text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
                     <span>🔍</span> BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG)
                   </h3>
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     Instruksi: Tuliskan petunjuk kunci yang didapatkan dari Saksi AI.
                   </p>
                 </div>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium shrink-0">
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-bold shrink-0">
                   HP Pencatat Bukti
                 </span>
               </div>
@@ -1752,17 +1781,17 @@ export default function InvestigasiPage() {
             </div>
 
             {/* BAGIAN III: LEMBAR ANALISIS HAKI (Ideal untuk HP Analis HAKI 1 & 2) */}
-            <div ref={sectionAnalisisRef} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5 scroll-mt-14">
+            <div ref={sectionAnalisisRef} className="bg-gradient-to-b from-purple-950/20 via-slate-900/90 to-slate-900/90 border border-purple-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg shadow-purple-500/5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-xs text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <h3 className="font-black text-xs text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
                     <span>⚖️</span> BAGIAN III: LEMBAR ANALISIS HAKI (HOTS - C4)
                   </h3>
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     Jawablah pertanyaan analisis pasal dan jenis pelanggaran etika/hukum berdasarkan bukti.
                   </p>
                 </div>
-                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-medium shrink-0">
+                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2.5 py-0.5 rounded-full font-bold shrink-0">
                   HP Analis HAKI
                 </span>
               </div>
@@ -1779,7 +1808,7 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "analisisTindakan") activeFieldRef.current = null; }}
                     onChange={(e) => setAnalisisTindakan(e.target.value)}
                     placeholder="Jelaskan tindakan konkrit pelaku yang melanggar aturan..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-purple-500 transition-all resize-none"
+                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 transition-all resize-none"
                   />
                 </div>
 
@@ -1798,7 +1827,7 @@ export default function InvestigasiPage() {
                             setJenisHaki(prev => prev ? `${prev}, ${tag}` : tag);
                           }
                         }}
-                        className="text-[10px] bg-slate-800 hover:bg-purple-900/40 text-purple-300 border border-purple-500/30 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                        className="text-[10px] bg-slate-800/90 hover:bg-purple-900/50 text-purple-300 border border-purple-500/30 px-2.5 py-1 rounded-xl transition-all cursor-pointer font-medium hover:scale-105 active:scale-95"
                       >
                         + {tag}
                       </button>
@@ -1811,7 +1840,7 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "jenisHaki") activeFieldRef.current = null; }}
                     onChange={(e) => setJenisHaki(e.target.value)}
                     placeholder="Pilih & Jelaskan: Hak Cipta, Lisensi CC, Hak Moral, atau Hak Ekonomi yang dilanggar..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-purple-500 transition-all resize-none"
+                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 transition-all resize-none"
                   />
                 </div>
 
@@ -1826,19 +1855,19 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "analisisKerugian") activeFieldRef.current = null; }}
                     onChange={(e) => setAnalisisKerugian(e.target.value)}
                     placeholder="Uraikan siapa yang dirugikan serta bentuk kerugian materil/imateril yang dialami..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-purple-500 transition-all resize-none"
+                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 transition-all resize-none"
                   />
                 </div>
               </div>
             </div>
 
             {/* BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI (HOTS - C5) */}
-            <div ref={sectionSolusiRef} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5 scroll-mt-14">
+            <div ref={sectionSolusiRef} className="bg-gradient-to-b from-amber-950/20 via-slate-900/90 to-slate-900/90 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-lg shadow-amber-500/5">
               <div>
-                <h3 className="font-bold text-xs text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="font-black text-xs text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                   <span>🛡️</span> BAGIAN IV: REKOMENDASI SOLUSI & MITIGASI KASUS (HOTS - C5)
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-400 mt-0.5">
                   Bagaimana cara menyelesaikan masalah ini secara adil dan etis?
                 </p>
               </div>
@@ -1855,7 +1884,7 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "solusiAdil") activeFieldRef.current = null; }}
                     onChange={(e) => setSolusiAdil(e.target.value)}
                     placeholder="Contoh: Takedown konten bajakan, kompensasi ganti rugi, permohonan maaf terbuka..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-amber-500 transition-all resize-none"
+                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/30 transition-all resize-none"
                   />
                 </div>
 
@@ -1870,15 +1899,15 @@ export default function InvestigasiPage() {
                     onBlur={() => { if (activeFieldRef.current === "aturanEtis") activeFieldRef.current = null; }}
                     onChange={(e) => setAturanEtis(e.target.value)}
                     placeholder="Contoh: Selalu mencantumkan atribusi sumber, membeli lisensi legal, meminta izin tertulis..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-amber-500 transition-all resize-none"
+                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/30 transition-all resize-none"
                   />
                 </div>
               </div>
             </div>
 
             {/* BAGIAN V: JURNAL REFLEKSI DIRI */}
-            <div ref={sectionRefleksiRef} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3 scroll-mt-14">
-              <h3 className="font-bold text-xs text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+            <div ref={sectionRefleksiRef} className="bg-gradient-to-b from-rose-950/20 via-slate-900/90 to-slate-900/90 border border-rose-500/30 rounded-2xl p-4 sm:p-5 space-y-3 scroll-mt-14 shadow-lg shadow-rose-500/5">
+              <h3 className="font-black text-xs text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
                 <span>💭</span> BAGIAN V: JURNAL REFLEKSI DIRI
               </h3>
               <div>
@@ -1892,7 +1921,7 @@ export default function InvestigasiPage() {
                   onBlur={() => { if (activeFieldRef.current === "refleksiDiri") activeFieldRef.current = null; }}
                   onChange={(e) => setRefleksiDiri(e.target.value)}
                   placeholder="Tuliskan pemahaman atau kesadaran baru yang kamu peroleh dari misi investigasi ini..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-rose-500 transition-all resize-none"
+                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400/30 transition-all resize-none"
                 />
               </div>
             </div>
@@ -1902,11 +1931,11 @@ export default function InvestigasiPage() {
               <button
                 type="button"
                 onClick={handleFinalSubmit}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl transition-all shadow-lg hover:-translate-y-0.5 text-xs md:text-sm flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-400 text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-500/25 hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>🚀</span> {isSubmitted ? "Kirim Ulang Pembaruan LKPD" : "Kirim Final Berkas Investigasi ke Guru"}
               </button>
-              <p className="text-[10px] text-slate-500 text-center mt-2 italic">
+              <p className="text-[10px] text-slate-400 text-center mt-2 font-medium">
                 Setiap ketikan Anda tersimpan otomatis di database room kelompok. Klik tombol di atas jika sudah yakin untuk mengirim laporan akhir.
               </p>
             </div>
@@ -1917,14 +1946,14 @@ export default function InvestigasiPage() {
       </div>
 
       {/* FIXED BOTTOM NAVIGATION BAR KHUSUS SMARTPHONE - Sangat Nyaman & Selalu Terjangkau */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2 flex items-center justify-around shadow-2xl">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/90 px-3 py-2 flex items-center justify-around shadow-2xl">
         <button
           type="button"
           onClick={() => setActiveTabMobile("chat")}
-          className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 py-2 px-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTabMobile === "chat"
-              ? "bg-blue-600 text-white shadow font-black"
-              : "text-slate-400 hover:text-white"
+              ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/30 font-black"
+              : "text-slate-400 hover:text-white font-semibold"
           }`}
         >
           <span className="text-base">💬</span>
@@ -1934,10 +1963,10 @@ export default function InvestigasiPage() {
         <button
           type="button"
           onClick={() => setActiveTabMobile("lembar")}
-          className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
+          className={`flex-1 py-2 px-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
             activeTabMobile === "lembar"
-              ? "bg-emerald-600 text-white shadow font-black"
-              : "text-slate-400 hover:text-white"
+              ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/30 font-black"
+              : "text-slate-400 hover:text-white font-semibold"
           }`}
         >
           <span className="text-base">📝</span>
