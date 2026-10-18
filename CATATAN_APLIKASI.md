@@ -30,13 +30,12 @@ Dokumen ini berisi rangkuman arsitektur, kode, keputusan teknis, alur pedagogis,
 
 ## 3. PEMBAGIAN KELOMPOK & STUDI KASUS
 
-Dalam 1 kelas diatur memiliki **6 Kelompok**, di mana **1 kasus diteliti oleh 2 kelompok berbeda** untuk menciptakan dinamika diskusi/komparasi saat presentasi kelas:
+Dalam 1 kelas diatur memiliki **6 Kelompok**, di mana kelas dibagi menjadi **2 Studi Kasus Utama** (Kasus #1 dan Kasus #2) berbasis isu aktual kecerdasan buatan (*AI Generatif* & *Deepfake Voice Cloning*) untuk menciptakan dinamika komparasi analitis saat presentasi kelas:
 
-| No. Kasus | Judul Kasus | Kelompok | Ringkasan Skenario Masalah |
+| No. Kasus | Judul Kasus | Sasaran Kelompok | Ringkasan Skenario Masalah |
 | :---: | :--- | :---: | :--- |
-| **Kasus #1** | Pembajakan Game 'CyberQuest' | Kelompok 1 & 2 | Game indie karya siswa SMK lokal mendadak viral, namun seminggu kemudian dibajak dan beredar di situs unduhan luar negeri dengan jejak forum anonim. |
-| **Kasus #2** | Plagiarisme Desain Maskot | Kelompok 3 & 4 | Sebuah kafe boba populer diduga menjiplak desain maskot dari seniman DeviantArt. Pemilik kafe beralasan membeli murah dari seorang pekerja lepas (*freelancer*). |
-| **Kasus #3** | Pencurian Konten Video (Re-uploader) | Kelompok 5 & 6 | Video eksperimen sains edukasi milik YouTube sekolah dicuri, dihilangkan *watermark*-nya, lalu diunggah ulang ke akun TikTok orang lain untuk mengeruk keuntungan iklan/AdSense. |
+| **Kasus #1** | Misteri Maskot AI 'Elang Digital' & Penjualan Stiker Ilegal | Kelompok 1, 2, 3 | Tim A (Siswa Kelas IX) membuat maskot 'Elang Digital' via prompt AI + diedit & dislogan di Canva untuk Classmeeting. Seorang *freelancer* (Budi) mengunduh, menghapus nama Tim A, lalu menjualnya sebagai stiker & kaos komersial di marketplace dengan dalih karya AI bebas hak cipta. |
+| **Kasus #2** | Skandal 'Voice Cloning' Guru & Iklan Bimbel Palsu | Kelompok 4, 5, 6 | Suara Pak Heru (Guru MTK) dari YouTube dicuri akun anonim menggunakan teknologi AI Voice Cloning & Deepfake untuk membuat rekaman suara palsu promosi modul bimbel berbayar di TikTok demi meraup komisi affiliate, merugikan reputasi guru. |
 
 ---
 

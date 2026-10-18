@@ -1937,7 +1937,7 @@ export default function InvestigasiPage() {
                     onFocus={() => { activeFieldRef.current = "petunjuk1"; }}
                     onBlur={() => { if (activeFieldRef.current === "petunjuk1") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk1(e.target.value)}
-                    placeholder="Contoh: Saksi menyebutkan pelaku mengunduh video lalu memotong watermark..."
+                    placeholder="Contoh: Saksi menyebutkan pelaku mengunduh gambar maskot / meng-clone suara korban tanpa izin..."
                     className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-2.5 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
@@ -1952,7 +1952,7 @@ export default function InvestigasiPage() {
                     onFocus={() => { activeFieldRef.current = "petunjuk2"; }}
                     onBlur={() => { if (activeFieldRef.current === "petunjuk2") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk2(e.target.value)}
-                    placeholder="Contoh: Karya berupa konten video sains eksperimen milik channel YouTube sekolah..."
+                    placeholder="Contoh: Karya berupa desain maskot sekolah / rekaman audio materi video pembelajaran guru..."
                     className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-2.5 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>
@@ -1967,7 +1967,7 @@ export default function InvestigasiPage() {
                     onFocus={() => { activeFieldRef.current = "petunjuk3"; }}
                     onBlur={() => { if (activeFieldRef.current === "petunjuk3") activeFieldRef.current = null; }}
                     onChange={(e) => setPetunjuk3(e.target.value)}
-                    placeholder="Contoh: Karya asli memiliki hak cipta terdaftar dan tidak diizinkan untuk dikomersialkan tanpa izin..."
+                    placeholder="Contoh: Karya memiliki hak cipta, hak moral pencipta, atau dilarang dimanipulasi/dikomersialkan tanpa izin..."
                     className={`w-full ${currentTheme.lkpdInputBg} border ${currentTheme.lkpdInputBorder} rounded-xl p-2.5 ${currentTheme.lkpdInputText} text-xs focus:outline-none transition-all resize-none`}
                   />
                 </div>

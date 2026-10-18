@@ -16,21 +16,15 @@ export const DEFAULT_KELAS_LIST: KelasItem[] = [
 export const DAFTAR_KASUS = [
   { 
     id: 1, 
-    judul: "Pembajakan Game 'CyberQuest'", 
-    deskripsi: "Game indie buatan siswa SMK lokal mendadak viral, namun sayangnya muncul di situs download bajakan luar negeri hanya dalam waktu seminggu setelah rilis. Modus operandi pelaku belum diketahui, namun ada jejak digital ke sebuah forum hacker anonim.",
-    kelompok: [1, 2] 
+    judul: "Misteri Maskot AI 'Elang Digital' & Penjualan Stiker Ilegal", 
+    deskripsi: "Tim A (Siswa Kelas IX) membuat desain logo maskot 'Elang Digital' untuk Classmeeting sekolah. Mereka tidak menggambar manual, melainkan menyusun prompt detail di aplikasi AI Generatif, memilih 4 variasi hasil, lalu mengedit tata letak dan menambahkan teks slogan di Canva. Setelah logo tersebut diunggah ke akun OSIS, seorang freelancer lokal bernama Budi mengunduh file gambar tersebut, menghapus nama Tim A, lalu mencetak dan menjualnya dalam bentuk stiker & kaos komersial di marketplace online tanpa izin. Saat ditegur, Budi membela diri: 'Gambar ini kan hasil AI, bukan buatan tangan manusia! Menurut internet, karya buatan AI itu tidak punya Hak Cipta dan bebas dipakai/jual oleh siapa saja tanpa izin!'",
+    kelompok: [1, 2, 3] 
   },
   { 
     id: 2, 
-    judul: "Plagiarisme Desain Maskot", 
-    deskripsi: "Sebuah kafe boba hits di kota diduga keras menggunakan desain maskot yang menjiplak karya seniman digital dari platform DeviantArt. Pemilik kafe mengklaim ia membeli desain tersebut dari seorang 'freelancer' murah di internet.",
-    kelompok: [3, 4] 
-  },
-  { 
-    id: 3, 
-    judul: "Pencurian Konten Video (Re-uploader)", 
-    deskripsi: "Video eksperimen sains edukasi milik channel YouTube sekolah diunduh, dipotong sedikit untuk menghilangkan watermark, lalu diunggah ulang ke TikTok dan mendapat jutaan views serta cuan (monetisasi). Siapa pelakunya?",
-    kelompok: [5, 6] 
+    judul: "Skandal 'Voice Cloning' Guru & Iklan Bimbel Palsu", 
+    deskripsi: "Pak Heru (Guru Matematika) mengunggah video penjelasan materi di YouTube Sekolah untuk bahan belajar murid. Seorang pemilik akun anonim mengambil sampel suara Pak Heru dari YouTube, lalu menggunakan teknologi AI Voice Cloning & Deepfake untuk membuat rekaman suara palsu. Dalam rekaman palsu tersebut, suara buatan AI mirip Pak Heru berkata: 'Anak-anak SMP, kalau mau lulus ujian pakai cara cepat, yuk beli modul bimbel di link bio saya!'. Rekaman suara manipulasi AI itu dipadukan dengan foto Pak Heru dan diunggah ke TikTok dengan menautkan link affiliate bimbel berbayar. Pemilik akun anonim mendapat komisi jutaan rupiah, sementara Pak Heru dipanggil Kepala Sekolah karena dianggap melakukan komersialisasi ilegal kepada muridnya.",
+    kelompok: [4, 5, 6] 
   }
 ];
 

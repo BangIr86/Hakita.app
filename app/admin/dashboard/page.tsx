@@ -53,11 +53,9 @@ type KelasItem = {
 };
 
 
-const daftarKasusMap: Record<number, string> = {
-  1: "Pembajakan Game 'CyberQuest'",
-  2: "Plagiarisme Desain Maskot",
-  3: "Pencurian Konten Video (Re-uploader)"
-};
+const daftarKasusMap: Record<number, string> = Object.fromEntries(
+  DAFTAR_KASUS.map((k) => [k.id, k.judul])
+);
 
 const parseBukti = (raw: string) => {
   try {
