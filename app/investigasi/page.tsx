@@ -95,6 +95,7 @@ export default function InvestigasiPage() {
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [showTimeUpModal, setShowTimeUpModal] = useState<boolean>(false);
   const [hasAlertedTimeUp, setHasAlertedTimeUp] = useState<boolean>(false);
+  const [sesiHabisAlert, setSesiHabisAlert] = useState<string | null>(null);
 
   // Status Form LKPD & Koneksi
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -190,9 +191,18 @@ export default function InvestigasiPage() {
     setSisaDetik(remaining);
     setIsTimerRunning(true);
 
-    if (remaining <= 0 && !hasAlertedTimeUp) {
-      setShowTimeUpModal(true);
-      setHasAlertedTimeUp(true);
+    if (remaining <= 0) {
+      try {
+        localStorage.removeItem(STORAGE_KEY_SESSION);
+        sessionStorage.setItem(
+          "hakita_expired_message",
+          `Sesi investigasi untuk Kelas ${namaKelas || kodeKelasAktif} (Kelompok ${kelompokAktif}) telah berakhir karena batas waktu (${durasiMenit} menit) telah habis. Seluruh catatan Anda telah tersimpan aman di sistem.`
+        );
+      } catch {}
+      if (!hasAlertedTimeUp) {
+        setShowTimeUpModal(true);
+        setHasAlertedTimeUp(true);
+      }
     }
   }, [isIdentitasLengkap, kodeKelasAktif, kelompokAktif, durasiMenit, hasAlertedTimeUp]);
 
@@ -216,6 +226,13 @@ export default function InvestigasiPage() {
       setSisaDetik(remaining);
 
       if (remaining <= 0) {
+        try {
+          localStorage.removeItem(STORAGE_KEY_SESSION);
+          sessionStorage.setItem(
+            "hakita_expired_message",
+            `Sesi investigasi untuk Kelas ${namaKelas || kodeKelasAktif} (Kelompok ${kelompokAktif}) telah berakhir karena batas waktu (${durasiMenit} menit) telah habis. Seluruh catatan Anda telah tersimpan aman di sistem.`
+          );
+        } catch {}
         if (!hasAlertedTimeUp) {
           setShowTimeUpModal(true);
           setHasAlertedTimeUp(true);
@@ -537,10 +554,41 @@ export default function InvestigasiPage() {
   // Auto-restore sesi kelas & kelompok jika halaman di-refresh (F5) oleh siswa
   useEffect(() => {
     try {
+      // 1. Cek apakah ada notifikasi sesi berakhir karena waktu habis saat di-refresh
+      const expiredMsg = sessionStorage.getItem("hakita_expired_message");
+      if (expiredMsg) {
+        setSesiHabisAlert(expiredMsg);
+        sessionStorage.removeItem("hakita_expired_message");
+        try {
+          localStorage.removeItem(STORAGE_KEY_SESSION);
+        } catch {}
+        return; // Sesi diakhiri, siswa tetap berada di halaman awal
+      }
+
       const saved = localStorage.getItem(STORAGE_KEY_SESSION);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.kodeKelas && parsed.namaKelas) {
+          // 2. Cek apakah batas waktu investigasi kelompok ini telah habis saat ditinggalkan/di-refresh
+          if (parsed.kelompok) {
+            const timerStorageKey = `hakita_timer_${parsed.kodeKelas}_kelompok_${parsed.kelompok}`;
+            const storedStart = localStorage.getItem(timerStorageKey);
+            if (storedStart) {
+              const startTime = parseInt(storedStart, 10);
+              const durasi = parsed.durasiMenit || 30;
+              const totalDetik = durasi * 60;
+              const elapsed = Math.floor((Date.now() - startTime) / 1000);
+              if (elapsed >= totalDetik) {
+                // Waktu telah habis! Otomatis akhiri sesi investigasi
+                localStorage.removeItem(STORAGE_KEY_SESSION);
+                setSesiHabisAlert(
+                  `Sesi investigasi untuk Kelas ${parsed.namaKelas} (Kelompok ${parsed.kelompok}) telah berakhir karena batas waktu (${durasi} menit) telah habis. Seluruh catatan Anda telah tersimpan aman di dashboard guru.`
+                );
+                return;
+              }
+            }
+          }
+
           setKodeKelasAktif(parsed.kodeKelas);
           setNamaKelas(parsed.namaKelas);
           setKodeKelasInput(parsed.kodeKelas);
@@ -1114,6 +1162,21 @@ export default function InvestigasiPage() {
           <p className="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed">
             Masukkan Kode Akses Kelas yang dibagikan oleh Guru Anda untuk membuka ruang investigasi digital kelompok.
           </p>
+
+          {sesiHabisAlert && (
+            <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-200 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-start gap-2.5">
+                <span className="text-2xl shrink-0">⏰</span>
+                <div>
+                  <h4 className="font-bold text-amber-400 text-sm mb-1">Sesi Investigasi Telah Berakhir</h4>
+                  <p className="text-amber-200/90 leading-relaxed">{sesiHabisAlert}</p>
+                  <p className="text-[11px] text-amber-400/80 mt-2 font-medium">
+                    Semua progres dan berkas jawaban LKPD telah tersimpan di dashboard guru. Hubungi guru Anda jika sesi kelas diperpanjang.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleVerifikasiKelas} className="space-y-4 text-left">
             <div>
@@ -2014,12 +2077,16 @@ export default function InvestigasiPage() {
             <p className="text-xs text-slate-300 leading-relaxed mb-4">
               Batas waktu investigasi <strong>{durasiMenit} menit</strong> yang telah diatur oleh Guru untuk sesi kelas ini telah selesai. Semua catatan dan analisis yang Anda ketik telah tersimpan aman.
             </p>
-            <div className="bg-slate-900 p-3 rounded-2xl border border-slate-700 text-xs text-slate-300 mb-5 text-left space-y-1.5">
+            <div className="bg-slate-900 p-3 rounded-2xl border border-slate-700 text-xs text-slate-300 mb-4 text-left space-y-1.5">
               <p className="font-bold text-amber-400 flex items-center gap-1.5">
                 <span>📢</span> Langkah Selanjutnya:
               </p>
               <p>1. Periksa kembali jawaban Anda pada Bagian I hingga V di lembar LKPD.</p>
               <p>2. Segera klik tombol <strong>"Kirim Final Berkas Investigasi"</strong> agar dapat dievaluasi oleh Guru dan AI Asesor.</p>
+            </div>
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-left text-[11px] text-amber-300 mb-5 flex items-start gap-2">
+              <span className="text-base shrink-0">⚠️</span>
+              <span><strong>Perhatian:</strong> Sesi waktu Anda telah habis. Jika halaman ini dimuat ulang (refresh/F5), sesi investigasi akan otomatis berakhir demi ketertiban ujian.</span>
             </div>
             <button
               onClick={() => {
