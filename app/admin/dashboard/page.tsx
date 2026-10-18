@@ -2256,6 +2256,21 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* PETUNJUK & LANGKAH PENGERJAAN INVESTIGASI */}
+          <div className="border border-black rounded p-2.5 mb-2.5 text-[10px] bg-gray-50/50">
+            <div className="border-b border-gray-300 pb-1 mb-1 font-bold uppercase text-[10px] flex justify-between">
+              <span>PETUNJUK & LANGKAH PENGERJAAN INVESTIGASI</span>
+              <span className="text-gray-500 font-normal">Alur Kolaborasi Tim (PBL)</span>
+            </div>
+            <ol className="list-decimal pl-4 space-y-0.5 text-gray-800 leading-tight">
+              <li><strong>Pelajari Kasus & Bagi Peran:</strong> Cermati skenario kasus dan pastikan peran Interrogator (Laptop), Pencatat Bukti (HP 1), dan Analis HAKI (HP 2) aktif.</li>
+              <li><strong>Interogasi Saksi AI:</strong> Interrogator mengajukan pertanyaan di chat untuk membongkar kronologi, motif pelaku, dan status lisensi karya.</li>
+              <li><strong>Catat Bukti (Bagian II):</strong> Pencatat merangkum minimal 3 petunjuk penting hasil interogasi ke dalam Log Bukti secara realtime.</li>
+              <li><strong>Analisis Hukum HAKI (Bagian III):</strong> Analis mengkaji pasal UU No. 28/2014, hak moral/ekonomi, dan pihak dirugikan.</li>
+              <li><strong>Solusi, Refleksi & Kirim Final (Bagian IV & V):</strong> Rumuskan mitigasi adil, isi refleksi diri, lalu klik tombol Kirim Final sebelum waktu habis.</li>
+            </ol>
+          </div>
+
           {/* BAGIAN II: CATATAN BUKTI INVESTIGASI (EVIDENCE LOG) */}
           <div className="border border-black rounded p-3 mb-2.5 text-[11px]">
             <div className="border-b border-gray-300 pb-1 mb-1.5 font-bold uppercase text-[10px]">

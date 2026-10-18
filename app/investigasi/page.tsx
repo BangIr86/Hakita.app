@@ -148,6 +148,7 @@ export default function InvestigasiPage() {
   const evaluasiAiRef = useRef(evaluasiAi);
 
   // Section Refs untuk Quick Jump Navigation di LKPD
+  const sectionLangkahRef = useRef<HTMLDivElement>(null);
   const sectionBuktiRef = useRef<HTMLDivElement>(null);
   const sectionAnalisisRef = useRef<HTMLDivElement>(null);
   const sectionSolusiRef = useRef<HTMLDivElement>(null);
@@ -1811,6 +1812,13 @@ export default function InvestigasiPage() {
             <span className={`text-[10px] ${currentTheme.cardSubtext} font-bold shrink-0 hidden sm:inline`}>Lompat Cepat:</span>
             <button 
               type="button"
+              onClick={() => sectionLangkahRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className={`px-2.5 py-1 rounded-lg ${currentTheme.isLight ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200' : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/20'} border text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer`}
+            >
+              <span>📋</span> Langkah Kerja
+            </button>
+            <button 
+              type="button"
               onClick={() => sectionBuktiRef.current?.scrollIntoView({ behavior: "smooth" })}
               className={`px-2.5 py-1 rounded-lg ${currentTheme.isLight ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border-emerald-500/20'} border text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all cursor-pointer`}
             >
@@ -1906,6 +1914,81 @@ export default function InvestigasiPage() {
                   <p>4. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaAnalis1 || "(Belum diisi)"}</strong> <span className="text-purple-500 text-[11px] font-semibold">(Analis HAKI 1)</span></p>
                   <p>5. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaAnalis2 || "(Belum diisi)"}</strong> <span className="text-indigo-500 text-[11px] font-semibold">(Analis HAKI 2)</span></p>
                   <p>6. <strong className={currentTheme.isLight ? 'text-slate-900' : 'text-white'}>{anggotaJuruBicara || "(Belum diisi / Opsional)"}</strong> <span className="text-amber-500 text-[11px] font-semibold">(Juru Bicara Presentasi)</span></p>
+                </div>
+              </div>
+            </div>
+
+            {/* PETUNJUK & LANGKAH-LANGKAH PENGERJAAN INVESTIGASI (ALUR KERJA TIM) */}
+            <div ref={sectionLangkahRef} className={`${currentTheme.lkpdCardBg} border ${currentTheme.isLight ? 'border-slate-200 bg-white' : currentTheme.lkpdCardBorder} rounded-2xl p-4 sm:p-5 space-y-3.5 scroll-mt-14 shadow-sm`}>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className={`font-black text-xs uppercase tracking-wider flex items-center gap-1.5 ${currentTheme.isLight ? 'text-indigo-800' : 'text-cyan-300'}`}>
+                  <span>📋</span> PETUNJUK & LANGKAH-LANGKAH PENGERJAAN INVESTIGASI
+                </h3>
+                <span className={`text-[10px] border px-2.5 py-0.5 rounded-full font-bold ${
+                  currentTheme.isLight ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                }`}>
+                  Panduan Alur Tim
+                </span>
+              </div>
+
+              <p className={`text-[11px] ${currentTheme.cardSubtext} leading-relaxed`}>
+                Lakukan investigasi terpadu bersama tim Anda dengan mengikuti 5 tahapan langkah kerja berikut:
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Langkah 1 */}
+                <div className={`p-3 rounded-xl border ${currentTheme.cardInnerBg} ${currentTheme.cardInnerBorder} space-y-1.5`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${currentTheme.isLight ? 'bg-indigo-600 text-white' : 'bg-cyan-500 text-slate-950'}`}>1</span>
+                    <strong className={`text-xs ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>Pelajari Kasus & Bagi Peran</strong>
+                  </div>
+                  <p className={`text-[11px] ${currentTheme.cardSubtext} leading-relaxed pl-7`}>
+                    Cermati skenario Studi Kasus kelompok Anda di atas. Pastikan tiap anggota memegang peran (Laptop untuk Interrogator, HP untuk Pencatat & Analis HAKI).
+                  </p>
+                </div>
+
+                {/* Langkah 2 */}
+                <div className={`p-3 rounded-xl border ${currentTheme.cardInnerBg} ${currentTheme.cardInnerBorder} space-y-1.5`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${currentTheme.isLight ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`}>2</span>
+                    <strong className={`text-xs ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>Interogasi Saksi Mata Digital (AI)</strong>
+                  </div>
+                  <p className={`text-[11px] ${currentTheme.cardSubtext} leading-relaxed pl-7`}>
+                    Interrogator mengetik pertanyaan kunci di panel chat kiri untuk membongkar kronologi, motif pelaku, dan status lisensi karya digital yang dilanggar.
+                  </p>
+                </div>
+
+                {/* Langkah 3 */}
+                <div className={`p-3 rounded-xl border ${currentTheme.cardInnerBg} ${currentTheme.cardInnerBorder} space-y-1.5`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${currentTheme.isLight ? 'bg-emerald-600 text-white' : 'bg-emerald-500 text-slate-950'}`}>3</span>
+                    <strong className={`text-xs ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>Catat Log Bukti (Bagian II)</strong>
+                  </div>
+                  <p className={`text-[11px] ${currentTheme.cardSubtext} leading-relaxed pl-7`}>
+                    Pencatat Bukti merangkum minimal 3 petunjuk penting (mengenai pelaku, karya yang dirugikan, dan status hukum lisensi) ke dalam Evidence Log secara realtime.
+                  </p>
+                </div>
+
+                {/* Langkah 4 */}
+                <div className={`p-3 rounded-xl border ${currentTheme.cardInnerBg} ${currentTheme.cardInnerBorder} space-y-1.5`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${currentTheme.isLight ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white'}`}>4</span>
+                    <strong className={`text-xs ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>Analisis Hukum & Etika HAKI (Bagian III)</strong>
+                  </div>
+                  <p className={`text-[11px] ${currentTheme.cardSubtext} leading-relaxed pl-7`}>
+                    Analis HAKI mengkaji pasal UU No. 28/2014, menentukan jenis hak cipta/moral/ekonomi yang dilanggar, serta mengidentifikasi kerugian korban.
+                  </p>
+                </div>
+
+                {/* Langkah 5 */}
+                <div className={`p-3 rounded-xl border ${currentTheme.cardInnerBg} ${currentTheme.cardInnerBorder} space-y-1.5 sm:col-span-2`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${currentTheme.isLight ? 'bg-amber-600 text-white' : 'bg-amber-500 text-slate-950'}`}>5</span>
+                    <strong className={`text-xs ${currentTheme.isLight ? 'text-slate-900' : 'text-white'}`}>Rumuskan Solusi, Refleksi & Kirim Laporan Final (Bagian IV & V)</strong>
+                  </div>
+                  <p className={`text-[11px] ${currentTheme.cardSubtext} leading-relaxed pl-7`}>
+                    Diskusikan solusi mitigasi yang adil, rumuskan aturan etis agar tidak melanggar di masa depan, isi jurnal refleksi diri, lalu klik tombol <strong>"Kirim Final Berkas Investigasi ke Guru"</strong> sebelum batas waktu habis.
+                  </p>
                 </div>
               </div>
             </div>
