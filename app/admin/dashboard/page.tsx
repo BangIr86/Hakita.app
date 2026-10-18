@@ -1027,6 +1027,22 @@ export default function AdminDashboard() {
                               <div><strong className="text-slate-500 block text-[11px]">Nomor Kelompok:</strong> Kelompok {selectedKelompok}</div>
                               <div><strong className="text-slate-500 block text-[11px]">Kasus:</strong> Kasus #{selectedGroupData.kasus_id} ({daftarKasusMap[selectedGroupData.kasus_id] || "Studi Kasus"})</div>
                             </div>
+                            {/* Studi Kasus (Stukas) Deskripsi */}
+                            {(() => {
+                              const currKasus = DAFTAR_KASUS.find(k => k.id === selectedGroupData.kasus_id) || DAFTAR_KASUS[0];
+                              return (
+                                <div className="bg-amber-50/80 border border-amber-200/90 p-3 rounded-xl text-xs space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <strong className="text-amber-900 text-[11px] uppercase tracking-wider flex items-center gap-1 font-bold">
+                                      <span>📑</span> Studi Kasus (Stukas) #{currKasus.id}: {currKasus.judul}
+                                    </strong>
+                                  </div>
+                                  <p className="text-slate-700 leading-relaxed text-[11px]">
+                                    {currKasus.deskripsi}
+                                  </p>
+                                </div>
+                              );
+                            })()}
                             <div>
                               <strong className="text-slate-500 block text-xs mb-1.5">Nama Anggota & Peran:</strong>
                               <div className="text-xs text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium space-y-1">

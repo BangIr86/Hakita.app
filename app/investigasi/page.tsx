@@ -1341,6 +1341,24 @@ export default function InvestigasiPage() {
             <p className="text-slate-400 text-xs">Masukkan nama anggota tim sesuai peran detektif masing-masing.</p>
           </div>
 
+          {/* Card Studi Kasus (Stukas) Kelompok */}
+          <div className="mb-4 p-4 bg-gradient-to-br from-amber-500/10 via-slate-900 to-indigo-950/40 border-2 border-amber-500/40 rounded-2xl shadow-xl relative overflow-hidden">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                <span>📁</span> Studi Kasus (Stukas) Kelompok #{kasusAktif.id}
+              </span>
+              <span className="text-[10px] font-mono text-cyan-400 font-bold bg-cyan-950/60 px-2 py-0.5 rounded-md border border-cyan-500/30">
+                Fokus Kasus
+              </span>
+            </div>
+            <h3 className="text-sm sm:text-base font-black text-white mb-2 flex items-center gap-1.5 text-amber-200">
+              <span>🔎</span> {kasusAktif.judul}
+            </h3>
+            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+              {kasusAktif.deskripsi}
+            </p>
+          </div>
+
           {/* Banner Tips Multi-Device */}
           <div className="mb-4 p-3.5 bg-blue-950/50 border border-blue-500/30 rounded-2xl text-[11px] text-blue-200 flex items-start gap-2 shadow-inner">
             <span className="text-base shrink-0">💡</span>
@@ -1764,6 +1782,24 @@ export default function InvestigasiPage() {
                   <span className="text-[10px] text-slate-400 block font-medium">Kasus yang Diteliti:</span>
                   <span className="font-bold text-amber-300 text-xs">Kasus #{kasusAktif.id} ({kasusAktif.judul})</span>
                 </div>
+              </div>
+
+              {/* Skenario Studi Kasus (Stukas) Lengkap */}
+              <div className="bg-gradient-to-br from-amber-500/10 via-slate-950 to-indigo-950/20 border border-amber-500/35 p-3.5 rounded-xl space-y-1.5 shadow-inner">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>📑</span> Studi Kasus (Stukas) yang Diteliti:
+                  </span>
+                  <span className="text-[9px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold uppercase">
+                    Kasus #{kasusAktif.id}
+                  </span>
+                </div>
+                <h4 className="font-bold text-white text-xs sm:text-sm text-amber-200">
+                  {kasusAktif.judul}
+                </h4>
+                <p className="text-slate-300 text-[11px] sm:text-xs leading-relaxed bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+                  {kasusAktif.deskripsi}
+                </p>
               </div>
 
               <div>
