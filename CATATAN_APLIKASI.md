@@ -327,8 +327,15 @@ hakita-app/
      * Jika nama kelas diperbarui, referensi kelas pada tabel `lkpd_reports` dan `chat_history` otomatis tersinkronisasi.
   3. **Hapus (Delete)**:
      * Tombol `🗑️ Hapus` menghapus kelas dari daftar dengan dialog konfirmasi pengaman agar kode tidak lagi dapat dimasuki oleh siswa.
-  4. **Reset (2 Tingkat)**:
-     * **Reset Sesi Kelas (`🔄 Reset Sesi`)**: Membersihkan seluruh jawaban LKPD dan riwayat interogasi chat khusus untuk kelas tersebut dengan konfirmasi, sehingga kelas siap digunakan kembali oleh rombel/jam pelajaran berikutnya tanpa menghapus kelasnya.
+  4. **Reset Fleksibel (Tingkat Kelas, Kelompok Khusus, & Default)**:
+     * **Reset Sesi Kelas (`🔄 Reset Sesi`)**: Membersihkan seluruh jawaban LKPD dan riwayat interogasi chat untuk seluruh kelompok di kelas tersebut, siap untuk rombel berikutnya.
+     * **Reset Kelompok Khusus (`🔄 Reset Kelompok`)**:
+       * Guru dapat mereset satu kelompok tertentu saja tanpa mengganggu kelompok lainnya.
+       * Dapat diakses langsung dari 3 titik:
+         1. Bilah aksi atas detail LKPD (`🔄 Reset Kelompok X`).
+         2. Kartu kelompok di sidebar kiri (`🔄 Reset`).
+         3. Pill cepat daftar kelompok aktif di modal Kelola Sesi Kelas (`🔄 Tim X`).
+       * Menghapus baris `lkpd_reports` dan `chat_history` kelompok sasaran dengan dialog konfirmasi aman.
      * **Reset Global ke Default (`🔄 Reset ke Bawaan`)**: Memulihkan daftar kelas ke konfigurasi awal sistem (Kelas 9A, 9B, dan 9C).
   5. **Penyimpanan Ganda & Offline Resilient**:
      * Tersinkronisasi secara otomatis ke Supabase (`kelas_sesi`) serta di-cache ke `localStorage` (`hakita_custom_kelas`) sehingga kelas yang dibuat/diedit tetap dapat diverifikasi di layar siswa (`/investigasi`) baik dalam kondisi online maupun pengujian lokal.

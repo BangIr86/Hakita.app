@@ -156,9 +156,10 @@ export default function AdminDashboard() {
   const [pesanErrorKelas, setPesanErrorKelas] = useState("");
   const [copiedKode, setCopiedKode] = useState<string | null>(null);
 
-  // State Konfirmasi Aksi (Hapus Kelas, Reset Sesi Data Kelas, Reset Default)
+  // State Konfirmasi Aksi (Hapus Kelas, Reset Sesi Data Kelas, Reset Kelompok Khusus, Reset Default)
   const [confirmDeleteKelas, setConfirmDeleteKelas] = useState<KelasItem | null>(null);
   const [confirmResetSesiKelas, setConfirmResetSesiKelas] = useState<KelasItem | null>(null);
+  const [confirmResetKelompok, setConfirmResetKelompok] = useState<{ kelompok: number; kelas: string } | null>(null);
   const [confirmResetDefault, setConfirmResetDefault] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -594,6 +595,49 @@ export default function AdminDashboard() {
     }
   };
 
+  // Handler Reset Data Investigasi Kelompok Tertentu / Khusus
+  const handleResetKelompokSpesifik = async (kelompok: number, kelas: string) => {
+    setIsActionLoading(true);
+    setPesanSuksesKelas("");
+    setPesanErrorKelas("");
+
+    try {
+      const hasSupabase =
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda");
+
+      if (hasSupabase) {
+        await supabase
+          .from("lkpd_reports")
+          .delete()
+          .eq("kelompok", kelompok)
+          .eq("kelas", kelas);
+
+        await supabase
+          .from("chat_history")
+          .delete()
+          .eq("kelompok", kelompok)
+          .eq("kelas", kelas);
+      }
+
+      // Bersihkan juga dari state lokal
+      setLkpdList((prev) =>
+        prev.filter((l) => !(l.kelompok === kelompok && l.kelas?.toUpperCase() === kelas.toUpperCase()))
+      );
+      setChats((prev) =>
+        prev.filter((c) => !(c.kelompok === kelompok && c.kelas?.toUpperCase() === kelas.toUpperCase()))
+      );
+
+      setConfirmResetKelompok(null);
+      setPesanSuksesKelas(`🔄 Berhasil mereset data Kelompok ${kelompok} (Kelas ${kelas}). Berkas LKPD dan chat interogasi telah dibersihkan.`);
+    } catch (err: any) {
+      console.error("Error resetting specific group:", err);
+      setPesanErrorKelas(`Gagal mereset data Kelompok ${kelompok}. Silakan coba lagi.`);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
 
   // Filter chats & lkpd berdasarkan kelas yang dipilih
   const filteredChats = selectedKelasFilter === "ALL" 
@@ -1009,10 +1053,18 @@ export default function AdminDashboard() {
             const hasReport = !!group.bukti_petunjuk || !!group.analisis_pelanggaran || !!group.solusi_rekomendasi;
 
             return (
-              <button
+              <div
                 key={k}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedKelompok(k)}
-                className={`w-full text-left p-3.5 rounded-2xl transition-all border ${
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedKelompok(k);
+                  }
+                }}
+                className={`w-full text-left p-3.5 rounded-2xl transition-all border cursor-pointer select-none ${
                   isSelected 
                     ? "bg-blue-50 border-blue-300 shadow-sm ring-1 ring-blue-400" 
                     : "bg-white border-slate-100 hover:border-blue-200 hover:bg-slate-50"
@@ -1033,6 +1085,18 @@ export default function AdminDashboard() {
                     <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-semibold">
                       Kasus #{group.kasus_id}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmResetKelompok({ kelompok: k, kelas: group.kelas });
+                      }}
+                      className="text-[10px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-1.5 py-0.5 rounded-md transition-all active:scale-95 flex items-center gap-0.5"
+                      title={`Reset / Bersihkan data LKPD & chat Kelompok ${k}`}
+                    >
+                      <span>🔄</span>
+                      <span>Reset</span>
+                    </button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-500">
@@ -1042,7 +1106,7 @@ export default function AdminDashboard() {
                 <p className="text-xs text-slate-400 truncate mt-1">
                   {group.nama_anggota}
                 </p>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -1200,6 +1264,14 @@ export default function AdminDashboard() {
                           title="Unduh data LKPD kelompok ini ke format Excel / CSV"
                         >
                           <span>📊</span> Unduh Excel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmResetKelompok({ kelompok: selectedKelompok, kelas: selectedGroupData.kelas })}
+                          className="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold px-3 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          title={`Reset / Bersihkan berkas LKPD dan chat interogasi khusus Kelompok ${selectedKelompok} agar siswa dapat mengulang dari awal`}
+                        >
+                          <span>🔄</span> Reset Kelompok {selectedKelompok}
                         </button>
                       </div>
                     </div>
@@ -2038,6 +2110,26 @@ export default function AdminDashboard() {
                               💬 {chatCount} pesan interogasi
                             </span>
                           </div>
+
+                          {/* Tombol Cepat Reset Kelompok Khusus jika ada data di kelas ini */}
+                          {lkpdCount > 0 && (
+                            <div className="pt-1.5 flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase">Reset Tim Khusus:</span>
+                              {Array.from(new Set(lkpdList.filter((l) => l.kelas?.toUpperCase() === k.nama_kelas.toUpperCase()).map((l) => l.kelompok)))
+                                .sort((a, b) => a - b)
+                                .map((kelNum) => (
+                                  <button
+                                    key={kelNum}
+                                    type="button"
+                                    onClick={() => setConfirmResetKelompok({ kelompok: kelNum, kelas: k.nama_kelas })}
+                                    className="text-[10px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                                    title={`Reset hanya data Kelompok ${kelNum} pada Kelas ${k.nama_kelas}`}
+                                  >
+                                    <span>🔄 Tim {kelNum}</span>
+                                  </button>
+                                ))}
+                            </div>
+                          )}
                         </div>
 
                         {/* Tombol Aksi Lengkap: Edit, Reset Sesi, Hapus */}
@@ -2217,6 +2309,51 @@ export default function AdminDashboard() {
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* DIALOG KONFIRMASI RESET KELOMPOK KHUSUS */}
+      {confirmResetKelompok && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[70] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-rose-200 text-center space-y-3.5">
+            <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+              🔄
+            </div>
+            <h4 className="text-base sm:text-lg font-black text-slate-800">
+              Reset Kelompok {confirmResetKelompok.kelompok}?
+            </h4>
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-left text-xs text-slate-700 space-y-1">
+              <p>
+                <span className="text-slate-400 font-semibold">Kelas:</span>{" "}
+                <span className="font-bold text-slate-800">Kelas {confirmResetKelompok.kelas}</span>
+              </p>
+              <p>
+                <span className="text-slate-400 font-semibold">Target:</span>{" "}
+                <span className="font-bold text-rose-600">Kelompok {confirmResetKelompok.kelompok}</span>
+              </p>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Seluruh lembar kerja LKPD dan riwayat chat interogasi khusus <strong>Kelompok {confirmResetKelompok.kelompok}</strong> akan dibersihkan permanen. Siswa dalam kelompok ini dapat masuk kembali dan memulai investigasi dari awal.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isActionLoading}
+                onClick={() => setConfirmResetKelompok(null)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isActionLoading}
+                onClick={() => handleResetKelompokSpesifik(confirmResetKelompok.kelompok, confirmResetKelompok.kelas)}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md transition-all active:scale-95"
+              >
+                {isActionLoading ? "Mereset..." : "Ya, Reset Kelompok Ini"}
+              </button>
+            </div>
           </div>
         </div>
       )}
