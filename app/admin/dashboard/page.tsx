@@ -2457,7 +2457,7 @@ export default function AdminDashboard() {
                   { num: 2, label: "2. Bukti Kunci (AI)", icon: "🔍" },
                   { num: 3, label: "3. Analisis HAKI (C4)", icon: "⚖️" },
                   { num: 4, label: "4. Solusi & Mitigasi (C5)", icon: "🛡️" },
-                  { num: 5, label: "5. Refleksi & Evaluasi", icon: "🌟" }
+                  { num: 5, label: "5. Refleksi & Diskusi Kelas", icon: "🌟" }
                 ].map((s) => (
                   <button
                     key={s.num}
@@ -2790,15 +2790,15 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* SLIDE 5: REFLEKSI DIRI & ASESOR AI */}
+              {/* SLIDE 5: REFLEKSI DIRI & SESI DISKUSI KELAS (Nilai Disembunyikan untuk Presentasi Siswa) */}
               {currentSlide === 5 && (
                 <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 my-auto">
                   <div className="text-center space-y-1">
                     <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">
-                      Bagian V: Jurnal Refleksi & Validasi Penutup
+                      Bagian V: Jurnal Refleksi & Sesi Diskusi Kelas
                     </span>
                     <h2 className="text-2xl md:text-3xl font-black text-white">
-                      Refleksi Pembelajaran & Pengesahan Hasil Investigasi
+                      Refleksi Pembelajaran & Sesi Diskusi Kelas
                     </h2>
                   </div>
 
@@ -2822,48 +2822,52 @@ export default function AdminDashboard() {
                       </span>
                     </div>
 
-                    {/* Evaluasi AI / Pengesahan Guru */}
+                    {/* Sesi Diskusi Kelas & Validasi Investigasi (Nilai disembunyikan untuk privasi & objektivitas guru) */}
                     <div className="bg-slate-900 border border-indigo-500/40 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                           <div className="flex items-center gap-2">
-                            <span className="text-2xl">🤖</span>
+                            <span className="text-2xl">💬</span>
                             <div>
-                              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">Validasi Asesor AI</span>
-                              <h4 className="text-sm font-bold text-white">Penilaian UU No. 28/2014 & HOTS</h4>
+                              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">Forum Diskusi Kelas</span>
+                              <h4 className="text-sm font-bold text-white">Sesi Tanya Jawab & Tanggapan</h4>
                             </div>
                           </div>
-                          {presEval && (
-                            <span className="px-3 py-1 bg-indigo-600 text-white font-black text-xs rounded-full shadow">
-                              {presEval.skorTotal}/100 ({presEval.predikat})
+                          {presGroupData.is_submitted ? (
+                            <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs rounded-full flex items-center gap-1 shadow">
+                              <span>✓</span> Berkas Terverifikasi
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-xs rounded-full">
+                              Draft Investigasi
                             </span>
                           )}
                         </div>
 
-                        {presEval ? (
-                          <div className="space-y-2.5 text-xs bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase block">Ulasan Hukum:</span>
-                              <p className="text-slate-200 text-xs leading-relaxed mt-0.5">{presEval.analisisHukum}</p>
-                            </div>
-                            <div className="border-t border-slate-800 pt-2">
-                              <span className="text-[10px] font-bold text-amber-400 uppercase block">Saran Penguatan Guru:</span>
-                              <p className="text-slate-300 italic text-xs leading-relaxed mt-0.5">{presEval.rekomendasiGuru}</p>
-                            </div>
+                        <div className="space-y-3 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
+                          <div>
+                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                              <span>💡</span> Panduan Diskusi untuk Kelompok Penanggap di Kelas:
+                            </span>
+                            <ul className="text-xs text-slate-200 space-y-1.5 list-disc list-inside leading-relaxed">
+                              <li>Apakah analisis jenis HAKI dan pasal UU yang dipaparkan sudah tepat?</li>
+                              <li>Bagaimana pandangan kelompok Anda terhadap langkah adil bagi korban?</li>
+                              <li>Adakah ide atau alternatif aturan etis lain yang bisa ditambahkan?</li>
+                            </ul>
                           </div>
-                        ) : (
-                          <div className="text-center py-6 px-4 bg-slate-950/60 rounded-2xl border border-dashed border-slate-800">
-                            <span className="text-3xl block mb-2 opacity-40">⏳</span>
-                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                              Evaluasi AI belum dijalankan untuk kelompok ini. Guru dapat mengklik tombol <em>"Jalankan Evaluasi AI"</em> di Dasbor Guru setelah presentasi usai.
-                            </p>
+
+                          <div className="border-t border-slate-800/80 pt-2.5 flex items-center justify-between text-[11px] text-slate-400">
+                            <span className="flex items-center gap-1.5 text-slate-400">
+                              <span>🔒</span> Nilai & rubrik evaluasi tersimpan khusus di sistem Dasbor Guru.
+                            </span>
                           </div>
-                        )}
+                        </div>
                       </div>
 
-                      <span className="text-[10px] text-slate-500 mt-3 block">
-                        Memastikan objektivitas penilaian saintifik sesuai pedoman PPG.
-                      </span>
+                      <div className="mt-3 p-2.5 bg-indigo-950/40 border border-indigo-500/20 rounded-xl flex items-center gap-2 text-[11px] text-indigo-200">
+                        <span className="text-base">🎤</span>
+                        <span>Juru Bicara dipersilakan memandu sesi tanya jawab dengan audiens kelas.</span>
+                      </div>
                     </div>
                   </div>
 

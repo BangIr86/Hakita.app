@@ -306,8 +306,8 @@ hakita-app/
        * Menguraikan tindakan konkret pelanggaran hukum, jenis HAKI/lisensi yang dilanggar (Hak Cipta, Hak Moral, Hak Ekonomi, CC), dan pihak yang dirugikan beserta kerugian moral/ekonomi.
     4. **Slide 4: Rekomendasi Solusi & Mitigasi (HOTS - C5)**:
        * Menyajikan 2 pilar penyelesaian: Langkah adil bagi korban saat ini (takedown, ganti rugi, maaf terbuka) dan Aturan etis masa depan.
-    5. **Slide 5: Jurnal Refleksi Tim & Pengesahan Asesor AI**:
-       * Menampilkan catatan refleksi autentik siswa mengenai nilai menghargai karya cipta, skor & ulasan kepatuhan UU No. 28/2014 dari Asesor AI, serta banner ajakan tanya jawab untuk kelompok penanggap.
+    5. **Slide 5: Jurnal Refleksi Tim & Sesi Diskusi Kelas**:
+       * Menampilkan catatan refleksi autentik siswa mengenai nilai menghargai karya cipta, panduan pemantik diskusi interaktif untuk kelompok penanggap di kelas, serta status verifikasi berkas. Nilai/skor angka dan rubrik evaluasi AI sengaja disembunyikan dari proyektor (eksklusif hanya untuk Guru di Dasbor) demi menjaga kenyamanan siswa saat presentasi.
   * **Kelompok Switcher Cepat Tanpa Menutup Modal**:
     * Guru dapat langsung berpindah dari Kelompok 1 ke Kelompok 2, 3, dst., hanya dengan 1 kali klik pada tab tim di atas layar presentasi.
   * **Dukungan Wireless Presenter / Pointer & Keyboard Navigation**:
