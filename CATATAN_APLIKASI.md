@@ -326,7 +326,7 @@ hakita-app/
      * Tombol `✏️ Edit` pada setiap kelas memungkinkan guru mengubah nama kelas, kode akses, dan durasi timer.
      * Jika nama kelas diperbarui, referensi kelas pada tabel `lkpd_reports` dan `chat_history` otomatis tersinkronisasi.
   3. **Hapus (Delete)**:
-     * Tombol `🗑️ Hapus` menghapus kelas dari daftar dengan dialog konfirmasi pengaman agar kode tidak lagi dapat dimasuki oleh siswa.
+     * Tombol `🗑️ Hapus` menghapus kelas dari daftar akses (`kelas_sesi`) sekaligus **menghapus bersih seluruh data laporan LKPD (`lkpd_reports`) dan riwayat chat interogasi siswa (`chat_history`)** untuk kelas tersebut, dengan dialog konfirmasi pengaman.
   4. **Reset Fleksibel (Tingkat Kelas, Kelompok Khusus, & Default)**:
      * **Reset Sesi Kelas (`🔄 Reset Sesi`)**: Membersihkan seluruh jawaban LKPD dan riwayat interogasi chat untuk seluruh kelompok di kelas tersebut, siap untuk rombel berikutnya.
      * **Reset Kelompok Khusus (`🔄 Reset Kelompok`)**:

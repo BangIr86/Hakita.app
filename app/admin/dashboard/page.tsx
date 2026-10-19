@@ -491,17 +491,35 @@ export default function AdminDashboard() {
         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda");
 
       if (hasSupabase) {
+        // 1. Hapus kelas dari tabel kelas_sesi
         await supabase
           .from("kelas_sesi")
           .delete()
           .eq("kode_kelas", kelas.kode_kelas);
+
+        // 2. Hapus seluruh data laporan LKPD kelas ini
+        await supabase
+          .from("lkpd_reports")
+          .delete()
+          .eq("kelas", kelas.nama_kelas);
+
+        // 3. Hapus seluruh data log chat interogasi kelas ini
+        await supabase
+          .from("chat_history")
+          .delete()
+          .eq("kelas", kelas.nama_kelas);
       }
 
+      // Bersihkan dari daftar kelas lokal
       const updated = kelasList.filter((k) => k.kode_kelas !== kelas.kode_kelas);
       setKelasList(updated);
       try {
         localStorage.setItem("hakita_custom_kelas", JSON.stringify(updated));
       } catch {}
+
+      // Bersihkan seluruh data LKPD dan riwayat chat kelas ini dari state lokal
+      setLkpdList((prev) => prev.filter((l) => l.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase()));
+      setChats((prev) => prev.filter((c) => c.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase()));
 
       if (selectedKelasFilter === kelas.nama_kelas) {
         setSelectedKelasFilter("ALL");
@@ -511,11 +529,11 @@ export default function AdminDashboard() {
         handleBatalEditKelas();
       }
 
-      setPesanSuksesKelas(`🗑️ Kelas ${kelas.nama_kelas} (${kelas.kode_kelas}) berhasil dihapus.`);
+      setPesanSuksesKelas(`🗑️ Kelas ${kelas.nama_kelas} (${kelas.kode_kelas}) beserta seluruh data LKPD dan riwayat chat berhasil dihapus.`);
       setConfirmDeleteKelas(null);
     } catch (err: any) {
-      console.error("Error deleting class:", err);
-      setPesanErrorKelas("Gagal menghapus kelas. Silakan coba lagi.");
+      console.error("Error deleting class and its data:", err);
+      setPesanErrorKelas("Gagal menghapus kelas dan datanya. Silakan coba lagi.");
     } finally {
       setIsActionLoading(false);
     }
@@ -2215,7 +2233,7 @@ export default function AdminDashboard() {
                     Hapus Kelas {confirmDeleteKelas.nama_kelas}?
                   </h4>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Kelas dengan kode <strong className="font-mono text-slate-800">{confirmDeleteKelas.kode_kelas}</strong> akan dihapus dari daftar. Siswa tidak akan dapat masuk menggunakan kode ini lagi.
+                    Kelas dengan kode <strong className="font-mono text-slate-800">{confirmDeleteKelas.kode_kelas}</strong> beserta <strong>seluruh data lembar kerja LKPD dan riwayat chat interogasi siswa</strong> untuk kelas ini akan dihapus permanen dari sistem.
                   </p>
                   <div className="flex gap-2 pt-2">
                     <button
