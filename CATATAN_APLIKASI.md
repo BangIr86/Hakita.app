@@ -328,7 +328,7 @@ hakita-app/
   3. **Hapus (Delete)**:
      * Tombol `🗑️ Hapus` menghapus kelas dari daftar akses (`kelas_sesi`) sekaligus **menghapus bersih seluruh data laporan LKPD (`lkpd_reports`) dan riwayat chat interogasi siswa (`chat_history`)** untuk kelas tersebut, dengan dialog konfirmasi pengaman.
   4. **Reset Fleksibel (Tingkat Kelas, Kelompok Khusus, & Default)**:
-     * **Reset Sesi Kelas (`🔄 Reset Sesi`)**: Membersihkan seluruh jawaban LKPD dan riwayat interogasi chat untuk seluruh kelompok di kelas tersebut, siap untuk rombel berikutnya.
+     * **Reset Sesi Kelas (`🔄 Reset Sesi`)**: Membersihkan seluruh berkas investigasi LKPD, susunan nama anggota tim (Interregator, Pencatat, Analis, Juru Bicara), dan seluruh riwayat chat interogasi untuk seluruh kelompok di kelas tersebut di database (lkpd_reports dan chat_history). Seluruh perangkat siswa otomatis mendeteksi reset secara real-time dan mengembalikan siswa ke Formulir Identitas dengan kolom nama kosong bersih.
      * **Reset Kelompok Khusus (`🔄 Reset Kelompok`)**:
        * Guru dapat mereset satu kelompok tertentu saja tanpa mengganggu kelompok lainnya.
        * Dapat diakses langsung dari 3 titik:

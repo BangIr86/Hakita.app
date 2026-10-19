@@ -497,17 +497,31 @@ export default function AdminDashboard() {
           .delete()
           .eq("kode_kelas", kelas.kode_kelas);
 
-        // 2. Hapus seluruh data laporan LKPD kelas ini
+        // 2. Hapus seluruh data laporan LKPD kelas ini (nama_kelas dan kode_kelas)
         await supabase
           .from("lkpd_reports")
           .delete()
-          .eq("kelas", kelas.nama_kelas);
+          .ilike("kelas", kelas.nama_kelas);
 
-        // 3. Hapus seluruh data log chat interogasi kelas ini
+        if (kelas.kode_kelas && kelas.kode_kelas.toUpperCase() !== kelas.nama_kelas.toUpperCase()) {
+          await supabase
+            .from("lkpd_reports")
+            .delete()
+            .ilike("kelas", kelas.kode_kelas);
+        }
+
+        // 3. Hapus seluruh data log chat interogasi kelas ini (nama_kelas dan kode_kelas)
         await supabase
           .from("chat_history")
           .delete()
-          .eq("kelas", kelas.nama_kelas);
+          .ilike("kelas", kelas.nama_kelas);
+
+        if (kelas.kode_kelas && kelas.kode_kelas.toUpperCase() !== kelas.nama_kelas.toUpperCase()) {
+          await supabase
+            .from("chat_history")
+            .delete()
+            .ilike("kelas", kelas.kode_kelas);
+        }
       }
 
       // Bersihkan dari daftar kelas lokal
@@ -518,8 +532,20 @@ export default function AdminDashboard() {
       } catch {}
 
       // Bersihkan seluruh data LKPD dan riwayat chat kelas ini dari state lokal
-      setLkpdList((prev) => prev.filter((l) => l.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase()));
-      setChats((prev) => prev.filter((c) => c.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase()));
+      setLkpdList((prev) =>
+        prev.filter(
+          (l) =>
+            l.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase() &&
+            l.kelas?.toUpperCase() !== kelas.kode_kelas.toUpperCase()
+        )
+      );
+      setChats((prev) =>
+        prev.filter(
+          (c) =>
+            c.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase() &&
+            c.kelas?.toUpperCase() !== kelas.kode_kelas.toUpperCase()
+        )
+      );
 
       if (selectedKelasFilter === kelas.nama_kelas) {
         setSelectedKelasFilter("ALL");
@@ -529,7 +555,7 @@ export default function AdminDashboard() {
         handleBatalEditKelas();
       }
 
-      setPesanSuksesKelas(`🗑️ Kelas ${kelas.nama_kelas} (${kelas.kode_kelas}) beserta seluruh data LKPD dan riwayat chat berhasil dihapus.`);
+      setPesanSuksesKelas(`🗑️ Kelas ${kelas.nama_kelas} (${kelas.kode_kelas}) beserta seluruh data LKPD, nama siswa, dan riwayat chat berhasil dihapus.`);
       setConfirmDeleteKelas(null);
     } catch (err: any) {
       console.error("Error deleting class and its data:", err);
@@ -539,7 +565,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Handler Reset Sesi Investigasi Kelas (Hapus Laporan LKPD dan Chat khusus kelas ini)
+  // Handler Reset Sesi Investigasi Kelas (Hapus Laporan LKPD, Nama Anggota, dan Chat khusus kelas ini)
   const handleResetSesiKelas = async (kelas: KelasItem) => {
     setIsActionLoading(true);
     setPesanSuksesKelas("");
@@ -551,22 +577,50 @@ export default function AdminDashboard() {
         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda");
 
       if (hasSupabase) {
+        // Hapus lkpd_reports berdasarkan nama_kelas dan kode_kelas
         await supabase
           .from("lkpd_reports")
           .delete()
-          .eq("kelas", kelas.nama_kelas);
+          .ilike("kelas", kelas.nama_kelas);
 
+        if (kelas.kode_kelas && kelas.kode_kelas.toUpperCase() !== kelas.nama_kelas.toUpperCase()) {
+          await supabase
+            .from("lkpd_reports")
+            .delete()
+            .ilike("kelas", kelas.kode_kelas);
+        }
+
+        // Hapus chat_history berdasarkan nama_kelas dan kode_kelas
         await supabase
           .from("chat_history")
           .delete()
-          .eq("kelas", kelas.nama_kelas);
+          .ilike("kelas", kelas.nama_kelas);
+
+        if (kelas.kode_kelas && kelas.kode_kelas.toUpperCase() !== kelas.nama_kelas.toUpperCase()) {
+          await supabase
+            .from("chat_history")
+            .delete()
+            .ilike("kelas", kelas.kode_kelas);
+        }
       }
 
       // Bersihkan juga dari state lokal
-      setLkpdList((prev) => prev.filter((l) => l.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase()));
-      setChats((prev) => prev.filter((c) => c.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase()));
+      setLkpdList((prev) =>
+        prev.filter(
+          (l) =>
+            l.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase() &&
+            l.kelas?.toUpperCase() !== kelas.kode_kelas.toUpperCase()
+        )
+      );
+      setChats((prev) =>
+        prev.filter(
+          (c) =>
+            c.kelas?.toUpperCase() !== kelas.nama_kelas.toUpperCase() &&
+            c.kelas?.toUpperCase() !== kelas.kode_kelas.toUpperCase()
+        )
+      );
 
-      setPesanSuksesKelas(`🔄 Seluruh data investigasi LKPD dan riwayat chat interogasi untuk Kelas ${kelas.nama_kelas} berhasil dibersihkan! Kelas siap digunakan untuk sesi pembelajaran baru.`);
+      setPesanSuksesKelas(`🔄 Seluruh data investigasi LKPD, susunan nama anggota tim, dan riwayat chat interogasi untuk Kelas ${kelas.nama_kelas} berhasil dibersihkan! Kelas siap digunakan untuk sesi pembelajaran baru.`);
       setConfirmResetSesiKelas(null);
     } catch (err: any) {
       console.error("Error resetting class session:", err);
@@ -624,30 +678,93 @@ export default function AdminDashboard() {
         process.env.NEXT_PUBLIC_SUPABASE_URL &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("url_proyek_supabase_anda");
 
+      const kObj = kelasList.find(
+        (k) => k.nama_kelas.toUpperCase() === kelas.toUpperCase() || k.kode_kelas.toUpperCase() === kelas.toUpperCase()
+      );
+      const kodeAlt = kObj?.kode_kelas;
+      const namaAlt = kObj?.nama_kelas;
+
       if (hasSupabase) {
+        // Hapus lkpd_reports kelompok ini
         await supabase
           .from("lkpd_reports")
           .delete()
           .eq("kelompok", kelompok)
-          .eq("kelas", kelas);
+          .ilike("kelas", kelas);
 
+        if (kodeAlt && kodeAlt.toUpperCase() !== kelas.toUpperCase()) {
+          await supabase
+            .from("lkpd_reports")
+            .delete()
+            .eq("kelompok", kelompok)
+            .ilike("kelas", kodeAlt);
+        }
+        if (namaAlt && namaAlt.toUpperCase() !== kelas.toUpperCase()) {
+          await supabase
+            .from("lkpd_reports")
+            .delete()
+            .eq("kelompok", kelompok)
+            .ilike("kelas", namaAlt);
+        }
+
+        // Hapus chat_history kelompok ini
         await supabase
           .from("chat_history")
           .delete()
           .eq("kelompok", kelompok)
-          .eq("kelas", kelas);
+          .ilike("kelas", kelas);
+
+        if (kodeAlt && kodeAlt.toUpperCase() !== kelas.toUpperCase()) {
+          await supabase
+            .from("chat_history")
+            .delete()
+            .eq("kelompok", kelompok)
+            .ilike("kelas", kodeAlt);
+        }
+        if (namaAlt && namaAlt.toUpperCase() !== kelas.toUpperCase()) {
+          await supabase
+            .from("chat_history")
+            .delete()
+            .eq("kelompok", kelompok)
+            .ilike("kelas", namaAlt);
+        }
       }
 
       // Bersihkan juga dari state lokal
       setLkpdList((prev) =>
-        prev.filter((l) => !(l.kelompok === kelompok && l.kelas?.toUpperCase() === kelas.toUpperCase()))
+        prev.filter(
+          (l) =>
+            !(
+              l.kelompok === kelompok &&
+              (l.kelas?.toUpperCase() === kelas.toUpperCase() ||
+                (kodeAlt && l.kelas?.toUpperCase() === kodeAlt.toUpperCase()) ||
+                (namaAlt && l.kelas?.toUpperCase() === namaAlt.toUpperCase()))
+            )
+        )
       );
       setChats((prev) =>
-        prev.filter((c) => !(c.kelompok === kelompok && c.kelas?.toUpperCase() === kelas.toUpperCase()))
+        prev.filter(
+          (c) =>
+            !(
+              c.kelompok === kelompok &&
+              (c.kelas?.toUpperCase() === kelas.toUpperCase() ||
+                (kodeAlt && c.kelas?.toUpperCase() === kodeAlt.toUpperCase()) ||
+                (namaAlt && c.kelas?.toUpperCase() === namaAlt.toUpperCase()))
+            )
+        )
       );
 
+      // Otomatis pindahkan pilihan kelompok jika kelompok yang di-reset sedang dipilih
+      setSelectedKelompok((prev) => {
+        if (prev === kelompok) {
+          const sisaKelompok = allKelompokKeys.filter((k) => k !== kelompok);
+          return sisaKelompok.length > 0 ? sisaKelompok[0] : null;
+        }
+        return prev;
+      });
+
       setConfirmResetKelompok(null);
-      setPesanSuksesKelas(`🔄 Berhasil mereset data Kelompok ${kelompok} (Kelas ${kelas}). Berkas LKPD dan chat interogasi telah dibersihkan.`);
+      setPesanSuksesKelas(`🔄 Berhasil mereset data Kelompok ${kelompok} (Kelas ${kelas}). Susunan nama anggota, berkas LKPD, dan riwayat interogasi telah dibersihkan.`);
     } catch (err: any) {
       console.error("Error resetting specific group:", err);
       setPesanErrorKelas(`Gagal mereset data Kelompok ${kelompok}. Silakan coba lagi.`);
@@ -680,6 +797,8 @@ export default function AdminDashboard() {
       if (selectedKelompok === null || !allKelompokKeys.includes(selectedKelompok)) {
         setSelectedKelompok(allKelompokKeys[0]);
       }
+    } else {
+      setSelectedKelompok(null);
     }
   }, [allKelompokKeys, selectedKelompok]);
 

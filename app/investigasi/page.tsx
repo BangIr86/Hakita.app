@@ -371,6 +371,59 @@ export default function InvestigasiPage() {
     }
   };
 
+  // MULTI-DEVICE: Reset seluruh state lokal siswa ketika Guru melakukan Reset Sesi / Reset Kelompok / Hapus Kelas
+  const resetSiswaStateLokal = (pesanNotif?: string) => {
+    // 1. Reset Identitas Tim & Kembali ke Form Registrasi Identitas
+    setIsIdentitasLengkap(false);
+    setAnggotaInterregator("");
+    setAnggotaPencatat1("");
+    setAnggotaPencatat2("");
+    setAnggotaAnalis1("");
+    setAnggotaAnalis2("");
+    setAnggotaJuruBicara("");
+
+    // 2. Kosongkan Riwayat Chat Interogasi & Input Chat
+    setPesan([]);
+    setInputUser("");
+
+    // 3. Kosongkan Seluruh Bukti, Analisis, Solusi LKPD & Hasil Evaluasi
+    setPetunjuk1("");
+    setPetunjuk2("");
+    setPetunjuk3("");
+    setAnalisisTindakan("");
+    setJenisHaki("");
+    setAnalisisKerugian("");
+    setSolusiAdil("");
+    setAturanEtis("");
+    setRefleksiDiri("");
+    setEvaluasiAi(null);
+    setIsSubmitted(false);
+
+    // 4. Reset Timer ke Durasi Awal Kelas & Bersihkan Timer Storage
+    timerStartRef.current = null;
+    if (kodeKelasAktif && kelompokAktif) {
+      try {
+        localStorage.removeItem(`hakita_timer_${kodeKelasAktif}_kelompok_${kelompokAktif}`);
+      } catch {}
+    }
+    setSisaDetik(durasiMenit * 60);
+    setIsTimerRunning(false);
+
+    // 5. Bersihkan refs penyimpan draft
+    lastSavedBuktiRef.current = { p1: "", p2: "", p3: "" };
+    lastSavedAnalisisRef.current = { tindakan: "", jenis: "", kerugian: "" };
+    lastSavedSolusiRef.current = { solusi: "", aturan: "", refleksi: "" };
+
+    if (kelompokAktif) {
+      setActiveGroups((prev) => prev.filter((k) => k !== kelompokAktif));
+    }
+
+    if (pesanNotif) {
+      setRoomToast(`🔄 ${pesanNotif}`);
+      setTimeout(() => setRoomToast(null), 5000);
+    }
+  };
+
   // MULTI-DEVICE: Handler Remote Update LKPD dengan Proteksi Focus Input
   const handleRemoteLkpdUpdate = (data: {
     bukti_petunjuk?: string;
@@ -443,6 +496,11 @@ export default function InvestigasiPage() {
           setAnggotaAnalis1(prev => prev || parsed.anggota_detail.analis1 || "");
           setAnggotaAnalis2(prev => prev || parsed.anggota_detail.analis2 || "");
           setAnggotaJuruBicara(prev => prev || parsed.anggota_detail.jurubicara || "");
+          if (parsed.anggota_detail.interregator) {
+            setIsIdentitasLengkap(true);
+          }
+        } else if (parsed.nama_anggota && parsed.nama_anggota.length > 5) {
+          setIsIdentitasLengkap(true);
         }
       } catch {
         if (activeFieldRef.current !== "solusiAdil") setSolusiAdil(data.solusi_rekomendasi);
@@ -571,7 +629,13 @@ export default function InvestigasiPage() {
           setIsIdentitasLengkap(true);
           setRoomToast(`🎉 Terhubung ke Room Kelompok ${num}! Kolaborasi aktif.`);
           setTimeout(() => setRoomToast(null), 4000);
+        } else {
+          setIsIdentitasLengkap(false);
         }
+      } else {
+        // Data di database belum ada atau baru saja di-reset oleh guru:
+        // Bersihkan seluruh identitas & draf lokal siswa agar memulai dari awal yang bersih
+        resetSiswaStateLokal();
       }
 
       // 2. Muat Chat History yang sudah ada dari database
@@ -982,7 +1046,7 @@ export default function InvestigasiPage() {
   // MULTI-DEVICE: Hybrid Realtime + Polling Fallback Subscription
   // Menjamin 100% sinkronisasi di jaringan sekolah yang memblokir WebSocket
   useEffect(() => {
-    if (!isIdentitasLengkap || !kodeKelasAktif || !kelompokAktif || !namaKelas) return;
+    if (!kodeKelasAktif || !kelompokAktif || !namaKelas) return;
 
     const isSupabaseConfigured = Boolean(
       process.env.NEXT_PUBLIC_SUPABASE_URL && 
@@ -1011,6 +1075,43 @@ export default function InvestigasiPage() {
           }
         }
       )
+      // Listener pendaftaran LKPD baru (misal perangkat rekan tim baru saja mendaftarkan anggota)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "lkpd_reports",
+          filter: `kelompok=eq.${kelompokAktif}`
+        },
+        (payload) => {
+          const inserted = payload.new as any;
+          if (inserted && inserted.kelas === namaKelas) {
+            handleRemoteLkpdUpdate(inserted);
+          }
+        }
+      )
+      // Listener pembersihan / reset LKPD oleh guru
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "lkpd_reports"
+        },
+        async () => {
+          const { data } = await supabase
+            .from("lkpd_reports")
+            .select("id")
+            .eq("kelompok", kelompokAktif)
+            .eq("kelas", namaKelas)
+            .maybeSingle();
+
+          if (!data) {
+            resetSiswaStateLokal("Sesi investigasi kelompok telah direset oleh Guru. Formulir telah dikembalikan ke awal.");
+          }
+        }
+      )
       // Listener chat interogasi baru dari laptop interregator
       .on(
         "postgres_changes",
@@ -1034,6 +1135,27 @@ export default function InvestigasiPage() {
           }
         }
       )
+      // Listener pembersihan riwayat chat interogasi oleh guru
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "chat_history"
+        },
+        async () => {
+          const { data } = await supabase
+            .from("chat_history")
+            .select("id")
+            .eq("kelompok", kelompokAktif)
+            .eq("kelas", namaKelas)
+            .limit(1);
+
+          if (!data || data.length === 0) {
+            setPesan([]);
+          }
+        }
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           setIsRealtimeConnected(true);
@@ -1053,6 +1175,9 @@ export default function InvestigasiPage() {
 
         if (lkpdData) {
           handleRemoteLkpdUpdate(lkpdData);
+        } else if (isIdentitasLengkap) {
+          // Laporan di database null/dihapus (misal di-reset oleh guru)
+          resetSiswaStateLokal("Sesi investigasi kelompok telah direset oleh Guru. Formulir telah dikembalikan ke awal.");
         }
 
         // Poll Chat changes (hanya jika AI saksi sedang tidak mengetik secara streaming di perangkat lokal)
@@ -1069,6 +1194,12 @@ export default function InvestigasiPage() {
               if (prev.length !== chatData.length) {
                 return chatData.map((c) => ({ role: c.role, content: c.content }));
               }
+              return prev;
+            });
+          } else if (chatData && chatData.length === 0) {
+            // Ketika chatData kosong di database (misal direset atau dibersihkan oleh guru):
+            setPesan((prev) => {
+              if (prev.length > 0) return [];
               return prev;
             });
           }
